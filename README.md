@@ -27,11 +27,53 @@ The package provides:
 
 ## Installation
 
-Add `ASCAPIKit` as a Swift package dependency and import it:
+### Xcode
+
+In Xcode, choose:
+
+```text
+File → Add Package Dependencies...
+```
+
+and enter the repository URL:
+
+```text
+https://github.com/yvente/ASCAPIKit
+```
+
+Before the first tagged release, use the main branch when evaluating the
+package.
+
+### Package.swift
+
+Add ASCAPIKit as a package dependency pinned to the main branch:
+
+```swift
+dependencies: [
+    .package(
+        url: "https://github.com/yvente/ASCAPIKit.git",
+        branch: "main"
+    )
+]
+```
+
+and add the product to your target:
+
+```swift
+.product(
+    name: "ASCAPIKit",
+    package: "ASCAPIKit"
+)
+```
+
+Then import it:
 
 ```swift
 import ASCAPIKit
 ```
+
+Once a tagged release is published, prefer a semantic-version dependency
+over the branch pin.
 
 ## Credentials
 
