@@ -41,18 +41,17 @@ and enter the repository URL:
 https://github.com/yvente/ASCAPIKit
 ```
 
-Before the first tagged release, use the main branch when evaluating the
-package.
+Select the latest tagged version.
 
 ### Package.swift
 
-Add ASCAPIKit as a package dependency pinned to the main branch:
+Add ASCAPIKit as a package dependency using semantic versioning:
 
 ```swift
 dependencies: [
     .package(
         url: "https://github.com/yvente/ASCAPIKit.git",
-        branch: "main"
+        from: "0.1.0"
     )
 ]
 ```
@@ -71,9 +70,6 @@ Then import it:
 ```swift
 import ASCAPIKit
 ```
-
-Once a tagged release is published, prefer a semantic-version dependency
-over the branch pin.
 
 ## Credentials
 
