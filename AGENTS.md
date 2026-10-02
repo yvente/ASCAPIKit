@@ -259,6 +259,15 @@ approved package-level domain and may expose typed methods for:
 - committing review attachment uploads
 - deleting review attachments
 
+The App Store Review Detail convenience layer is an explicitly approved
+package-level domain and may expose typed methods for:
+
+- reading App Store review details by resource ID
+- reading App Store review details through an App Store version
+- reading the review-detail relationship ID for an App Store version
+- creating App Store review details
+- partially updating App Store review details
+
 Do not add another typed endpoint without an explicit package-level decision.
 
 Use the generic primitives for endpoints outside this convenience set.
@@ -436,3 +445,29 @@ The host supplies the App Store review detail resource ID.
 
 Review-detail contact information, demo-account credentials, notes, and
 review submission actions are separate domains.
+
+## 23. Keep App Store review information separate from submission actions
+
+App Store review details contain review contact information, optional demo
+credentials, and notes for a specific App Store version.
+
+The typed review-detail layer must:
+
+1. model contact first name, contact last name, phone, email,
+   demo-account name, demo-account password, demo-account-required, and
+   notes
+2. keep response attributes tolerant of sparse responses
+3. use `appStoreVersions` as the create relationship resource type
+4. preserve PATCH semantics where `nil` means omitted, empty strings are
+   explicit values, and `false` remains an explicit Boolean value
+5. reject an empty update before making a network request
+6. not duplicate Apple's email, phone, credential, or note-content
+   validation policy
+7. not log, cache, or persist demo-account passwords
+8. not add App Review submission actions to this domain
+9. not use deprecated App Store Version Submission APIs
+10. keep App Store review attachments as their existing independent
+    convenience domain
+
+The host controls when review information is created or updated and when a
+review submission is eventually performed.

@@ -636,7 +636,90 @@ Review attachment resources do not expose a typed downloadable media URL
 in this layer, so ASCAPIKit does not invent a download URL or reuse
 presigned upload URLs for downloads.
 
-App Store review detail creation and editing are outside this phase.
+## App Store review details
+
+ASCAPIKit provides typed support for the App Review information associated
+with an App Store version.
+
+Read an existing review detail directly from a version:
+
+```swift
+let detail =
+    try await client.getReviewDetail(
+        appStoreVersionID: versionID
+    )
+```
+
+You can also read the relationship ID without fetching the full resource:
+
+```swift
+let detailID =
+    try await client.getReviewDetailID(
+        appStoreVersionID: versionID
+    )
+```
+
+A missing to-one relationship is returned as `nil`.
+
+Create review information for a version:
+
+```swift
+let detail =
+    try await client.createReviewDetail(
+        appStoreVersionID: versionID,
+        contactFirstName: firstName,
+        contactLastName: lastName,
+        contactPhone: phone,
+        contactEmail: email,
+        demoAccountRequired: false,
+        notes: notes
+    )
+```
+
+The create API models contact first name, contact last name, phone, email,
+and `demoAccountRequired` as explicit inputs.
+
+Demo-account name, password, and review notes are optional request values.
+
+ASCAPIKit does not duplicate App Store Connect validation rules for email
+addresses, phone numbers, credentials, or review-note content.
+
+### Partial review-detail updates
+
+Update only selected fields:
+
+```swift
+let updated =
+    try await client.updateReviewDetail(
+        id: detail.id,
+        changes:
+            ASCAppStoreReviewDetailUpdate(
+                contactEmail:
+                    "new@example.com",
+                notes:
+                    "Updated review notes"
+            )
+    )
+```
+
+For update values:
+
+- `nil` means omit the attribute from the PATCH request
+- an empty string is sent as an explicit empty string
+- `false` is sent as an explicit Boolean false
+
+An update with no changed attributes is rejected before a network request.
+
+### Review credentials
+
+`demoAccountPassword` is review credential data.
+
+ASCAPIKit transmits it only as part of the App Store Connect request.
+The review-detail convenience layer does not log, cache, or persist review
+credentials.
+
+After creating or reading a review detail, its resource ID can be passed
+to the review-attachment APIs.
 
 ## Generic read primitive
 
