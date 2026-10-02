@@ -324,6 +324,7 @@ final class ASCAppPreviewTests: XCTestCase {
             "previewFrameTimeCode",
             "mimeType",
             "videoUrl",
+            "previewFrameImage",
             "uploadOperations",
             "videoDeliveryState"
         ] {

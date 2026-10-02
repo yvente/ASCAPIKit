@@ -34,3 +34,14 @@ public enum ASCImageDownloadError:
     case downloadFailed(Int)
     case emptyResponse
 }
+
+public enum ASCPreviewDownloadError:
+    Error,
+    Equatable,
+    Sendable
+{
+    case videoUnavailable
+    case unsafeVideoURL
+    case downloadFailed(Int)
+    case emptyResponse
+}

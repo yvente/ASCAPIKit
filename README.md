@@ -485,8 +485,96 @@ let currentOrder = try await client.listPreviewOrder(
 )
 ```
 
-Video downloading and preview-frame image downloading are intentionally
-outside this phase.
+### Downloading an app preview
+
+An `AppPreview` may expose a `videoUrl` after App Store Connect has
+processed the video.
+
+Download an already-fetched preview resource:
+
+```swift
+let data = try await client.downloadPreviewVideo(
+    preview
+)
+```
+
+Or fetch the preview resource by ID and then download the video:
+
+```swift
+let data = try await client.downloadPreviewVideo(
+    id: previewID
+)
+```
+
+The App Store Connect resource request uses the client's JWT.
+
+The subsequent media URL request does not include the App Store Connect
+JWT.
+
+ASCAPIKit validates that the media URL is HTTPS and does not contain URL
+credentials.
+
+The returned `Data` represents the video delivered through Apple's
+`videoUrl`. ASCAPIKit does not promise byte-for-byte recovery of the
+original uploaded source file.
+
+ASCAPIKit does not cache, persist, decode, transcode, stream, or export
+preview video data.
+
+### Preview frame image
+
+Modern App Preview resources expose `previewFrameImage`.
+
+The older `previewImage` attribute is deprecated and is not used by
+ASCAPIKit's typed App Preview layer.
+
+A preview frame image contains its image asset and processing state.
+
+```swift
+let state = preview.attributes
+    .previewFrameImage?
+    .state?
+    .state
+```
+
+Download the frame image from an already-fetched preview:
+
+```swift
+let data = try await client.downloadPreviewFrameImage(
+    preview,
+    format: .png
+)
+```
+
+Or fetch the App Preview resource by ID first:
+
+```swift
+let data = try await client.downloadPreviewFrameImage(
+    id: previewID,
+    format: .png
+)
+```
+
+Preview-frame image downloading reuses ASCAPIKit's generic
+`ASCImageAsset` resolver and image downloader.
+
+Image CDN requests do not include the App Store Connect JWT.
+
+ASCAPIKit does not require a specific preview-frame processing-state
+string before attempting a download when an image asset is already
+available.
+
+### App preview download errors
+
+Preview-video URL and download failures use
+`ASCPreviewDownloadError`:
+
+- `videoUnavailable`
+- `unsafeVideoURL`
+- `downloadFailed(Int)`
+- `emptyResponse`
+
+Preview-frame image downloads reuse `ASCImageDownloadError`.
 
 ## Generic read primitive
 

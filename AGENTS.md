@@ -246,6 +246,9 @@ package-level domain and may expose typed methods for:
 - deleting app previews
 - reading app preview relationship order
 - reordering app previews
+- downloading app preview video data
+- reading modern preview-frame image metadata
+- downloading preview-frame image data
 
 Do not add another typed endpoint without an explicit package-level decision.
 
@@ -368,3 +371,35 @@ The typed App Preview layer must:
 6. not add polling, retry, backoff, video decoding, transcoding, or media
    validation policy
 7. keep `ASCPreviewType` separate from `ASCScreenshotDisplayType`
+
+## 21. Preserve App Preview download security boundaries
+
+Modern App Preview resources use `videoUrl` and `previewFrameImage`.
+
+The deprecated `previewImage` and `assetDeliveryState` fields must not be
+reintroduced into the typed App Preview model.
+
+For app preview video downloads:
+
+1. require `https`
+2. require a non-empty host
+3. reject URL user information
+4. reject URL passwords
+5. never attach the App Store Connect JWT
+6. never log the video URL
+7. do not add retry, cache, persistence, streaming, decoding, or
+   transcoding policy
+
+`downloadPreviewVideo(id:)` may first perform an authenticated App Store
+Connect request to fetch preview metadata.
+
+The subsequent video request must remain unauthenticated.
+
+Preview-frame image downloads must reuse `ASCImageAsset` and
+`downloadImageAsset`.
+
+Do not reimplement image-template resolution or image-download policy for
+App Preview poster frames.
+
+A processing-state string is metadata, not a client-side download gate
+when the corresponding downloadable URL or image asset already exists.

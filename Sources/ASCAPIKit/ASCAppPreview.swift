@@ -147,6 +147,43 @@ public struct ASCVideoDeliveryState:
     }
 }
 
+public struct ASCPreviewFrameImageState:
+    Codable,
+    Equatable,
+    Sendable
+{
+    public let errors: [ASCAssetStateError]?
+    public let warnings: [ASCAssetStateError]?
+    public let state: String?
+
+    public init(
+        errors: [ASCAssetStateError]?,
+        warnings: [ASCAssetStateError]?,
+        state: String?
+    ) {
+        self.errors = errors
+        self.warnings = warnings
+        self.state = state
+    }
+}
+
+public struct ASCPreviewFrameImage:
+    Codable,
+    Equatable,
+    Sendable
+{
+    public let image: ASCImageAsset?
+    public let state: ASCPreviewFrameImageState?
+
+    public init(
+        image: ASCImageAsset?,
+        state: ASCPreviewFrameImageState?
+    ) {
+        self.image = image
+        self.state = state
+    }
+}
+
 public struct ASCAppPreview:
     Codable,
     Equatable,
@@ -174,6 +211,8 @@ public struct ASCAppPreview:
         public let previewFrameTimeCode: String?
         public let mimeType: String?
         public let videoURL: String?
+        public let previewFrameImage:
+            ASCPreviewFrameImage?
         public let uploadOperations:
             [ASCUploadOperation]?
         public let videoDeliveryState:
@@ -189,7 +228,9 @@ public struct ASCAppPreview:
             uploadOperations:
                 [ASCUploadOperation]?,
             videoDeliveryState:
-                ASCVideoDeliveryState?
+                ASCVideoDeliveryState?,
+            previewFrameImage:
+                ASCPreviewFrameImage? = nil
         ) {
             self.fileSize = fileSize
             self.fileName = fileName
@@ -203,6 +244,8 @@ public struct ASCAppPreview:
                 uploadOperations
             self.videoDeliveryState =
                 videoDeliveryState
+            self.previewFrameImage =
+                previewFrameImage
         }
 
         private enum CodingKeys:
@@ -215,6 +258,7 @@ public struct ASCAppPreview:
             case previewFrameTimeCode
             case mimeType
             case videoURL = "videoUrl"
+            case previewFrameImage
             case uploadOperations
             case videoDeliveryState
         }
@@ -356,6 +400,7 @@ private let appPreviewFields = [
     "previewFrameTimeCode",
     "mimeType",
     "videoUrl",
+    "previewFrameImage",
     "uploadOperations",
     "videoDeliveryState"
 ].joined(separator: ",")
