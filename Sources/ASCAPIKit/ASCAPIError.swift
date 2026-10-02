@@ -21,3 +21,16 @@ public enum ASCAssetUploadError:
     case unsafeAssetUploadURL
     case assetUploadFailed(Int)
 }
+
+public enum ASCImageDownloadError:
+    Error,
+    Equatable,
+    Sendable
+{
+    case invalidImageAsset
+    case invalidImageFormat
+    case unsafeImageURL
+    case imageUnavailable
+    case downloadFailed(Int)
+    case emptyResponse
+}

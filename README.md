@@ -275,6 +275,63 @@ let state = screenshot.attributes
 ASCAPIKit does not retry failed upload operations or apply scheduling/backoff
 policy.
 
+### Downloading a screenshot
+
+`AppScreenshot` exposes an `imageAsset` after App Store Connect has
+processed the screenshot.
+
+`ASCImageAsset` contains the asset's native width, height, and Apple's
+template URL.
+
+Resolve the native-size image URL:
+
+```swift
+let url = try imageAsset.resolvedURL(
+    format: .png
+)
+```
+
+Download an already-fetched screenshot resource:
+
+```swift
+let data = try await client.downloadScreenshot(
+    screenshot,
+    format: .png
+)
+```
+
+Or fetch the screenshot resource by ID and then download its image:
+
+```swift
+let data = try await client.downloadScreenshot(
+    id: screenshotID,
+    format: .png
+)
+```
+
+The authenticated App Store Connect resource request uses the client's JWT.
+
+The resolved image CDN request does not include the App Store Connect JWT.
+
+`downloadImageAsset` is also available as the lower-level reusable image
+download primitive:
+
+```swift
+let data = try await client.downloadImageAsset(
+    imageAsset,
+    format: .png
+)
+```
+
+The returned `Data` represents the image delivered by Apple's image asset
+URL at the asset's native dimensions.
+
+ASCAPIKit does not promise that these bytes are byte-for-byte identical to
+the originally uploaded source file.
+
+ASCAPIKit does not cache, persist, decode, resize, or export downloaded
+images.
+
 ### Screenshot order
 
 ```swift
@@ -314,6 +371,21 @@ Local file validation and presigned asset-upload failures use
 - `invalidUploadOperation`
 - `unsafeAssetUploadURL`
 - `assetUploadFailed(Int)`
+
+Authenticated App Store Connect API failures continue to use
+`ASCAPIError`.
+
+### Image download errors
+
+Image-asset URL resolution and image download failures use
+`ASCImageDownloadError`:
+
+- `invalidImageAsset`
+- `invalidImageFormat`
+- `unsafeImageURL`
+- `imageUnavailable`
+- `downloadFailed(Int)`
+- `emptyResponse`
 
 Authenticated App Store Connect API failures continue to use
 `ASCAPIError`.

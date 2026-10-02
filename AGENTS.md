@@ -231,6 +231,8 @@ domain and may expose typed methods for:
 - deleting screenshots
 - reading screenshot relationship order
 - reordering screenshots
+- resolving screenshot image asset URLs
+- downloading screenshot image data
 
 Do not add another typed endpoint without an explicit package-level decision.
 
@@ -309,3 +311,31 @@ checksum of the original complete file.
 
 Upload operations must collectively cover the complete file without gaps or
 overlaps before any upload request is performed.
+
+## 19. Preserve image-download security boundaries
+
+`ImageAsset.templateUrl` represents an Apple image asset URL template.
+
+Image downloads are different from authenticated App Store Connect API
+requests.
+
+For resolved image URLs:
+
+1. require `https`
+2. require a non-empty host
+3. reject URL user information
+4. reject URL passwords
+5. substitute the asset's native width and height
+6. validate the requested format before substitution
+7. never attach the App Store Connect JWT
+8. never log the template URL
+9. never log the resolved image URL
+10. do not add retry, cache, persistence, resizing, or image-decoding policy
+
+`downloadScreenshot(id:)` may first perform an authenticated App Store
+Connect request to read the screenshot resource.
+
+The subsequent image CDN request must remain unauthenticated.
+
+The image delivered through `ImageAsset.templateUrl` must not be documented
+as guaranteed byte-for-byte recovery of the original uploaded source file.
