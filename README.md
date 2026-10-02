@@ -55,7 +55,7 @@ Add ASCAPIKit as a package dependency using semantic versioning:
 dependencies: [
     .package(
         url: "https://github.com/yvente/ASCAPIKit.git",
-        from: "0.1.0"
+        from: "0.2.0"
     )
 ]
 ```
@@ -1069,3 +1069,7 @@ ASCAPIKit does not implement:
   above
 
 Hosts should build those policies above ASCAPIKit when needed.
+
+## License
+
+ASCAPIKit is available under the MIT License. See `LICENSE` for details.
