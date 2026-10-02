@@ -763,8 +763,47 @@ let items =
     )
 ```
 
-The typed creation convenience currently creates only App Store version
-items. The read model tolerates other review-submission item types that
+List submissions with the official filters:
+
+```swift
+let unresolved =
+    try await client.listReviewSubmissions(
+        appID: appID,
+        platform: "IOS",
+        states: [
+            "UNRESOLVED_ISSUES"
+        ]
+    )
+```
+
+ASCAPIKit's listReviewSubmissions convenience uses the top-level
+`reviewSubmissions` collection with `filter[app]`, which also allows
+platform and state filters in the same query.
+
+Add any documented reviewable resource as an item:
+
+```swift
+let subscriptionItem =
+    try await client.addReviewSubmissionItem(
+        reviewSubmissionID:
+            submission.id,
+        target:
+            .subscriptionVersion(
+                subscriptionVersionID
+            )
+    )
+```
+
+`ASCReviewSubmissionItemTarget` models the documented reviewable resource
+relationships, such as App Store versions, custom product pages,
+app events, in-app purchase versions, subscription versions, and
+Game Center resources.
+
+The `addAppStoreVersionToReviewSubmission` convenience delegates to the
+same target-based creation.
+
+The typed creation convenience covers only the documented target cases.
+The read model tolerates other review-submission item types that
 Apple may return.
 
 ### Explicit submission actions
@@ -787,13 +826,40 @@ let canceled =
     )
 ```
 
-These methods each perform one App Store Connect PATCH request.
+Resolve an item after fixing an unresolved issue:
+
+```swift
+let resolved =
+    try await client.resolveReviewSubmissionItem(
+        id: item.id
+    )
+
+let resubmitted =
+    try await client.submitReviewSubmission(
+        id: submission.id
+    )
+```
+
+Mark an item removed without deleting it:
+
+```swift
+let marked =
+    try await client.markReviewSubmissionItemRemoved(
+        id: item.id
+    )
+```
+
+Marking an item removed through a PATCH and deleting an item through
+`deleteReviewSubmissionItem` are different server operations. ASCAPIKit
+exposes both, and the host chooses which to use.
+
+These methods each perform one App Store Connect request.
 
 They do not perform hidden preflight requests, polling, retries, automatic
-submission, or state gating.
+submission, automatic resolution, automatic removal, or state gating.
 
-ASCAPIKit does not automatically create a submission, add items, or submit
-for review as one combined operation.
+ASCAPIKit does not automatically create a submission, add items, resolve
+issues, or submit for review as one combined operation.
 
 The host remains responsible for deciding when a submission is ready.
 
@@ -805,8 +871,8 @@ enums so future App Store Connect state values remain decodable.
 The package does not use the deprecated App Store Version Submission
 resource for this workflow.
 
-Review-submission item issue-resolution actions are outside this layer for
-now.
+Resolving and removing review-submission items are explicit one-key
+Boolean actions rather than a generic item-update API.
 
 ## Generic read primitive
 

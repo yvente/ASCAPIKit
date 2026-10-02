@@ -52,6 +52,135 @@ final class ASCClientTests: XCTestCase {
         )
     }
 
+    func testGenericListMergesCallerQueryItemsOnFirstPage() async throws {
+        let data = try TestSupport.page([
+            ["id": "1"]
+        ])
+
+        let transport = StubTransport(
+            responses: [
+                .init(data: data)
+            ]
+        )
+
+        let key = TestSupport.makePrivateKey()
+
+        let client = try TestSupport.makeClient(
+            transport: transport,
+            key: key
+        )
+
+        let resources: [TestResource] = try await client.list(
+            "/v1/exampleResources",
+            resourceType: "exampleResources",
+            fields: "name",
+            queryItems: [
+                URLQueryItem(
+                    name: "filter[app]",
+                    value: "APP_ID"
+                ),
+                URLQueryItem(
+                    name: "filter[state]",
+                    value: "READY_FOR_REVIEW"
+                )
+            ]
+        )
+
+        XCTAssertEqual(
+            resources,
+            [TestResource(id: "1")]
+        )
+
+        let requests = await transport.recordedRequests()
+
+        XCTAssertEqual(requests.count, 1)
+
+        let request = try XCTUnwrap(requests.first)
+        let query = try TestSupport.queryItems(for: request)
+
+        XCTAssertEqual(
+            query["limit"],
+            "200"
+        )
+        XCTAssertEqual(
+            query["fields[exampleResources]"],
+            "name"
+        )
+        XCTAssertEqual(
+            query["filter[app]"],
+            "APP_ID"
+        )
+        XCTAssertEqual(
+            query["filter[state]"],
+            "READY_FOR_REVIEW"
+        )
+    }
+
+    func testGenericListPaginationDoesNotAppendCallerFiltersToNextPage() async throws {
+        let nextURL =
+            "https://api.appstoreconnect.apple.com/v1/exampleResources?cursor=2"
+
+        let firstPage = try TestSupport.page(
+            [
+                ["id": "1"]
+            ],
+            next: nextURL
+        )
+
+        let secondPage = try TestSupport.page([
+            ["id": "2"]
+        ])
+
+        let transport = StubTransport(
+            responses: [
+                .init(data: firstPage),
+                .init(data: secondPage)
+            ]
+        )
+
+        let key = TestSupport.makePrivateKey()
+
+        let client = try TestSupport.makeClient(
+            transport: transport,
+            key: key
+        )
+
+        let resources: [TestResource] = try await client.list(
+            "/v1/exampleResources",
+            resourceType: "exampleResources",
+            fields: "name",
+            queryItems: [
+                URLQueryItem(
+                    name: "filter[app]",
+                    value: "APP_ID"
+                )
+            ]
+        )
+
+        XCTAssertEqual(
+            resources.map(\.id),
+            ["1", "2"]
+        )
+
+        let requests = await transport.recordedRequests()
+
+        XCTAssertEqual(requests.count, 2)
+
+        let secondRequest = requests[1]
+
+        XCTAssertEqual(
+            secondRequest.url?.absoluteString,
+            nextURL,
+            "second page must use links.next verbatim without re-appending first-page filters"
+        )
+
+        let secondQuery = try TestSupport.queryItems(for: secondRequest)
+
+        XCTAssertNil(secondQuery["filter[app]"])
+        XCTAssertNil(secondQuery["fields[exampleResources]"])
+        XCTAssertNil(secondQuery["limit"])
+    }
+
     func testPaginationCombinesMultiplePages() async throws {
         let secondURL =
             "https://api.appstoreconnect.apple.com/v1/exampleResources?cursor=2"

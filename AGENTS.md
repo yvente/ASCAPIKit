@@ -271,11 +271,15 @@ package-level domain and may expose typed methods for:
 The Review Submission convenience layer is an explicitly approved
 package-level domain and may expose typed methods for:
 
-- listing and reading modern review submissions
+- listing and reading modern review submissions, including the official
+  filtered submission listing
 - creating review submissions for apps
 - listing review-submission items
-- adding App Store versions as review-submission items
-- removing review-submission items
+- adding review-submission items for all currently documented typed
+  targets
+- removing review-submission items through the official DELETE endpoint
+- explicitly resolving review-submission items
+- explicitly marking review-submission items removed
 - explicitly submitting a review submission
 - explicitly canceling a review submission
 
@@ -498,8 +502,16 @@ The typed review-submission layer must:
 5. reuse the generic paginated list primitive for submission and item
    lists
 6. keep App Store version item creation explicit
-7. not pretend App Store version item creation is a generic item API
-8. use the official review-submission-item DELETE endpoint for removal
+7. use the top-level `/v1/reviewSubmissions` collection with
+   `filter[app]` in the typed `listReviewSubmissions` convenience so
+   app, platform, and state filters share one query-based
+   implementation;
+   do not confuse `/apps/{id}/reviewSubmissions` with
+   `/apps/{id}/relationships/reviewSubmissions` — the former is a
+   related-resource endpoint, the latter is the relationship-linkage
+   endpoint
+8. use the official review-submission-item DELETE endpoint for deletion
+   and keep it distinct from the `removed` PATCH action
 9. encode submission as the exact Boolean action `submitted: true`
 10. encode cancellation as the exact Boolean action `canceled: true`
 11. never combine submit and cancel attributes in one request
@@ -508,8 +520,15 @@ The typed review-submission layer must:
 14. not gate submission or cancellation on client-side state assumptions
 15. not add retry, polling, waiting, or resubmission policy
 16. keep review-detail and review-attachment domains independent
-17. leave item `resolved` and `removed` PATCH actions to a separately
-    approved unresolved-issues workflow
+17. keep `resolved` and `removed` as explicit one-key Boolean PATCH
+    actions rather than a generic item-update API
+18. not add automatic resolution, removal, or resubmission orchestration
 
-The host decides when to create, populate, submit, cancel, or retry a
-review submission.
+Review-submission item creation may be generic only through the explicitly
+modeled `ASCReviewSubmissionItemTarget` cases corresponding to documented
+Apple relationship/resource-type pairs.
+
+Do not expose arbitrary raw relationship names or raw resource types.
+
+The host decides when to create, populate, resolve, remove, submit, cancel,
+or retry a review submission.

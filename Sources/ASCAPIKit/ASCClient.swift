@@ -146,7 +146,8 @@ public struct ASCClient: Sendable {
         _ path: String,
         resourceType: String,
         fields: String,
-        limit: Int = 200
+        limit: Int = 200,
+        queryItems: [URLQueryItem] = []
     ) async throws -> [Resource] {
         let endpoint = baseURL.appending(path: path)
 
@@ -166,7 +167,7 @@ public struct ASCClient: Sendable {
                 name: "fields[\(resourceType)]",
                 value: fields
             )
-        ]
+        ] + queryItems
 
         guard var nextURL = components.url else {
             throw ASCAPIError.invalidResponse
