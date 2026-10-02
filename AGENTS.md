@@ -250,6 +250,15 @@ package-level domain and may expose typed methods for:
 - reading modern preview-frame image metadata
 - downloading preview-frame image data
 
+The App Store Review Attachment convenience layer is an explicitly
+approved package-level domain and may expose typed methods for:
+
+- listing and reading App Store review attachments
+- creating review attachment upload reservations
+- uploading review attachment bytes through the generic asset uploader
+- committing review attachment uploads
+- deleting review attachments
+
 Do not add another typed endpoint without an explicit package-level decision.
 
 Use the generic primitives for endpoints outside this convenience set.
@@ -403,3 +412,27 @@ App Preview poster frames.
 
 A processing-state string is metadata, not a client-side download gate
 when the corresponding downloadable URL or image asset already exists.
+
+## 22. Keep review attachments on the generic asset-upload path
+
+App Store review attachments use the same reservation, upload-operation,
+checksum, and commit workflow as other App Store Connect upload assets.
+
+The typed review-attachment layer must:
+
+1. reuse `ASCUploadOperation`
+2. reuse `ASCAssetDeliveryState`
+3. reuse `ascAssetFileSize`
+4. reuse `uploadAsset`
+5. keep App Store Connect JWT authentication off presigned upload URLs
+6. keep `fileSize` numeric
+7. keep `uploaded` Boolean
+8. not add retry, polling, backoff, cache, persistence, or file-type policy
+9. not invent attachment download URLs
+10. not treat App Preview's `assetDeliveryState` deprecation as applying
+    to App Store review attachments
+
+The host supplies the App Store review detail resource ID.
+
+Review-detail contact information, demo-account credentials, notes, and
+review submission actions are separate domains.

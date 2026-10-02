@@ -576,6 +576,68 @@ Preview-video URL and download failures use
 
 Preview-frame image downloads reuse `ASCImageDownloadError`.
 
+## App Store review attachments
+
+ASCAPIKit provides typed support for files attached to App Store review
+details.
+
+Review attachments can include documentation, demo videos, or other
+material that helps App Review evaluate an app.
+
+List existing attachments:
+
+```swift
+let attachments =
+    try await client.listReviewAttachments(
+        reviewDetailID: reviewDetailID
+    )
+```
+
+Upload an attachment:
+
+```swift
+let attachment =
+    try await client.uploadReviewAttachment(
+        fileURL: fileURL,
+        reviewDetailID: reviewDetailID
+    )
+```
+
+The upload convenience performs:
+
+1. an App Store review attachment reservation
+2. every upload operation returned by App Store Connect
+3. whole-file MD5 calculation
+4. upload commit
+
+Binary upload operations reuse ASCAPIKit's generic asset uploader and do
+not include the App Store Connect JWT.
+
+Read processing state:
+
+```swift
+let current =
+    try await client.getReviewAttachment(
+        id: attachment.id
+    )
+
+let state =
+    current.attributes
+        .assetDeliveryState?
+        .state
+```
+
+Unlike the modern App Preview API, App Store review attachments currently
+use `assetDeliveryState` as their documented processing-state attribute.
+
+ASCAPIKit does not poll for completion.
+
+Review attachment resources do not expose a typed downloadable media URL
+in this layer, so ASCAPIKit does not invent a download URL or reuse
+presigned upload URLs for downloads.
+
+App Store review detail creation and editing are outside this phase.
+
 ## Generic read primitive
 
 Typed convenience methods are not the boundary of the package.
