@@ -149,6 +149,18 @@ public struct ASCClient: Sendable {
         limit: Int = 200,
         queryItems: [URLQueryItem] = []
     ) async throws -> [Resource] {
+        // The generic list owns `limit` and `fields[<resourceType>]`.
+        // Caller query items must not duplicate those names, otherwise
+        // URLComponents would emit ambiguous duplicate query keys.
+        let callerQueryNames = queryItems.map(\.name)
+
+        guard
+            !callerQueryNames.contains("limit"),
+            !callerQueryNames.contains("fields[\(resourceType)]")
+        else {
+            throw ASCAPIError.invalidResponse
+        }
+
         let endpoint = baseURL.appending(path: path)
 
         guard var components = URLComponents(

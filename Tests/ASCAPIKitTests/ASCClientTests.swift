@@ -181,6 +181,108 @@ final class ASCClientTests: XCTestCase {
         XCTAssertNil(secondQuery["limit"])
     }
 
+    func testGenericListRejectsDuplicateGenericOwnedQueryNames() async throws {
+        let transport = StubTransport(responses: [])
+
+        let client = try TestSupport.makeClient(
+            transport: transport,
+            key: TestSupport.makePrivateKey()
+        )
+
+        for callerItems in [
+            [
+                URLQueryItem(
+                    name: "limit",
+                    value: "1"
+                )
+            ],
+            [
+                URLQueryItem(
+                    name: "fields[exampleResources]",
+                    value: "caller"
+                )
+            ]
+        ] {
+            do {
+                let _: [TestResource] = try await client.list(
+                    "/v1/exampleResources",
+                    resourceType: "exampleResources",
+                    fields: "name",
+                    queryItems: callerItems
+                )
+
+                XCTFail("Expected invalidResponse for duplicate generic-owned query name")
+            } catch let error as ASCAPIError {
+                XCTAssertEqual(error, .invalidResponse)
+            }
+        }
+
+        let requests = await transport.recordedRequests()
+
+        XCTAssertTrue(requests.isEmpty)
+    }
+
+    func testGenericListAllowsNonCollidingCallerQueryNames() async throws {
+        let data = try TestSupport.page([
+            ["id": "1"]
+        ])
+
+        let transport = StubTransport(
+            responses: [
+                .init(data: data)
+            ]
+        )
+
+        let client = try TestSupport.makeClient(
+            transport: transport,
+            key: TestSupport.makePrivateKey()
+        )
+
+        let _: [TestResource] = try await client.list(
+            "/v1/exampleResources",
+            resourceType: "exampleResources",
+            fields: "name",
+            queryItems: [
+                URLQueryItem(
+                    name: "fields[otherResources]",
+                    value: "title"
+                ),
+                URLQueryItem(
+                    name: "filter[app]",
+                    value: "APP_ID"
+                ),
+                URLQueryItem(
+                    name: "include",
+                    value: "builds"
+                )
+            ]
+        )
+
+        let requests = await transport.recordedRequests()
+
+        XCTAssertEqual(requests.count, 1)
+
+        let request = try XCTUnwrap(requests.first)
+        let query = try TestSupport.queryItems(for: request)
+
+        XCTAssertEqual(
+            query["fields[exampleResources]"],
+            "name"
+        )
+        XCTAssertEqual(
+            query["fields[otherResources]"],
+            "title"
+        )
+        XCTAssertEqual(
+            query["filter[app]"],
+            "APP_ID"
+        )
+        XCTAssertEqual(
+            query["include"],
+            "builds"
+        )
+    }
+
     func testPaginationCombinesMultiplePages() async throws {
         let secondURL =
             "https://api.appstoreconnect.apple.com/v1/exampleResources?cursor=2"

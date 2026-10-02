@@ -10,12 +10,16 @@ The package provides:
 
 - ES256 App Store Connect JWT generation
 - JSON:API resource decoding
-- paginated collection reads
+- paginated collection reads with caller filters
 - JSON:API PATCH and POST mutations
+- App Store Connect asset upload (reservation, binary upload, commit)
+- image asset download
 - structured HTTP/API error classification
 - transport injection for deterministic testing
-- typed convenience methods for a small built-in resource set
-- public generic primitives for endpoints not covered by the conveniences
+- typed convenience layers for screenshots, app previews, review
+  attachments, review details, and modern review submissions
+- public generic primitives for endpoints not covered by the typed
+  conveniences
 
 ## Requirements
 
@@ -1061,6 +1065,7 @@ ASCAPIKit does not implement:
 - UI
 - localized/user-facing messages
 - application-specific workflows
-- additional typed endpoint layers
+- typed convenience layers beyond the explicitly approved domains listed
+  above
 
 Hosts should build those policies above ASCAPIKit when needed.
