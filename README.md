@@ -721,6 +721,93 @@ credentials.
 After creating or reading a review detail, its resource ID can be passed
 to the review-attachment APIs.
 
+## Review submissions
+
+ASCAPIKit provides typed support for Apple's modern review-submission
+workflow.
+
+A review submission is a container associated with an app. Reviewable
+resources are added as review-submission items.
+
+Create a submission:
+
+```swift
+let submission =
+    try await client.createReviewSubmission(
+        appID: appID
+    )
+```
+
+Apple no longer requires the `platform` attribute when creating a review
+submission, so this convenience does not send one.
+
+Add an App Store version as an item:
+
+```swift
+let item =
+    try await client.addAppStoreVersionToReviewSubmission(
+        reviewSubmissionID:
+            submission.id,
+        appStoreVersionID:
+            versionID
+    )
+```
+
+Read the current items:
+
+```swift
+let items =
+    try await client.listReviewSubmissionItems(
+        reviewSubmissionID:
+            submission.id
+    )
+```
+
+The typed creation convenience currently creates only App Store version
+items. The read model tolerates other review-submission item types that
+Apple may return.
+
+### Explicit submission actions
+
+Submitting for review is an explicit host action:
+
+```swift
+let submitted =
+    try await client.submitReviewSubmission(
+        id: submission.id
+    )
+```
+
+Canceling is also explicit:
+
+```swift
+let canceled =
+    try await client.cancelReviewSubmission(
+        id: submission.id
+    )
+```
+
+These methods each perform one App Store Connect PATCH request.
+
+They do not perform hidden preflight requests, polling, retries, automatic
+submission, or state gating.
+
+ASCAPIKit does not automatically create a submission, add items, or submit
+for review as one combined operation.
+
+The host remains responsible for deciding when a submission is ready.
+
+### Review submission states
+
+ASCAPIKit exposes submission and item states as strings rather than closed
+enums so future App Store Connect state values remain decodable.
+
+The package does not use the deprecated App Store Version Submission
+resource for this workflow.
+
+Review-submission item issue-resolution actions are outside this layer for
+now.
+
 ## Generic read primitive
 
 Typed convenience methods are not the boundary of the package.

@@ -268,6 +268,17 @@ package-level domain and may expose typed methods for:
 - creating App Store review details
 - partially updating App Store review details
 
+The Review Submission convenience layer is an explicitly approved
+package-level domain and may expose typed methods for:
+
+- listing and reading modern review submissions
+- creating review submissions for apps
+- listing review-submission items
+- adding App Store versions as review-submission items
+- removing review-submission items
+- explicitly submitting a review submission
+- explicitly canceling a review submission
+
 Do not add another typed endpoint without an explicit package-level decision.
 
 Use the generic primitives for endpoints outside this convenience set.
@@ -471,3 +482,34 @@ The typed review-detail layer must:
 
 The host controls when review information is created or updated and when a
 review submission is eventually performed.
+
+## 24. Keep submission actions explicit and host-controlled
+
+Modern App Review submission uses `reviewSubmissions` and
+`reviewSubmissionItems`.
+
+The typed review-submission layer must:
+
+1. not use deprecated `AppStoreVersionSubmission` resources
+2. create review submissions through the `apps` relationship
+3. not require or invent a platform value during review-submission
+   creation
+4. keep submission and item state values forward-compatible
+5. reuse the generic paginated list primitive for submission and item
+   lists
+6. keep App Store version item creation explicit
+7. not pretend App Store version item creation is a generic item API
+8. use the official review-submission-item DELETE endpoint for removal
+9. encode submission as the exact Boolean action `submitted: true`
+10. encode cancellation as the exact Boolean action `canceled: true`
+11. never combine submit and cancel attributes in one request
+12. never submit automatically after creating a submission or item
+13. not perform hidden preflight network requests before submission
+14. not gate submission or cancellation on client-side state assumptions
+15. not add retry, polling, waiting, or resubmission policy
+16. keep review-detail and review-attachment domains independent
+17. leave item `resolved` and `removed` PATCH actions to a separately
+    approved unresolved-issues workflow
+
+The host decides when to create, populate, submit, cancel, or retry a
+review submission.
