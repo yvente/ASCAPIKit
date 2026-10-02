@@ -390,6 +390,104 @@ Image-asset URL resolution and image download failures use
 Authenticated App Store Connect API failures continue to use
 `ASCAPIError`.
 
+## App previews
+
+ASCAPIKit provides typed support for App Store app preview sets and app
+preview video assets.
+
+App preview display types intentionally differ from screenshot display
+types. For example:
+
+```swift
+ASCPreviewType.iPhone67.rawValue
+// "IPHONE_67"
+
+ASCScreenshotDisplayType.iPhone67.rawValue
+// "APP_IPHONE_67"
+```
+
+List or create a preview set for an App Store version localization:
+
+```swift
+let sets = try await client.listPreviewSets(
+    versionLocalizationID: localizationID
+)
+
+let set = try await client.createPreviewSet(
+    versionLocalizationID: localizationID,
+    previewType: .iPhone67
+)
+```
+
+Upload an app preview:
+
+```swift
+let preview = try await client.uploadPreview(
+    fileURL: videoFileURL,
+    previewSetID: set.id
+)
+```
+
+The upload convenience performs:
+
+1. an App Preview reservation
+2. every upload operation returned by App Store Connect
+3. whole-file MD5 calculation
+4. upload commit
+
+Binary upload operations reuse ASCAPIKit's generic asset uploader and do
+not include the App Store Connect JWT.
+
+App preview processing is asynchronous. Read the preview again to inspect
+its modern video-delivery state:
+
+```swift
+let current = try await client.getPreview(
+    id: preview.id
+)
+
+let state = current.attributes
+    .videoDeliveryState?
+    .state
+```
+
+ASCAPIKit does not poll for completion.
+
+The current App Store Connect API deprecates `assetDeliveryState` for app
+previews in favor of `videoDeliveryState`. ASCAPIKit's typed App Preview
+API uses `videoDeliveryState`.
+
+### Poster frame timecode
+
+Set the App Store preview poster-frame timecode:
+
+```swift
+let updated =
+    try await client.updatePreviewFrameTimeCode(
+        id: preview.id,
+        timeCode: "00:00:05:00"
+    )
+```
+
+ASCAPIKit sends the timecode to App Store Connect but does not duplicate
+Apple's media/timecode validation rules locally.
+
+### App preview order
+
+```swift
+try await client.reorderPreviews(
+    previewSetID: set.id,
+    orderedPreviewIDs: ids
+)
+
+let currentOrder = try await client.listPreviewOrder(
+    previewSetID: set.id
+)
+```
+
+Video downloading and preview-frame image downloading are intentionally
+outside this phase.
+
 ## Generic read primitive
 
 Typed convenience methods are not the boundary of the package.

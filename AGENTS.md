@@ -234,6 +234,19 @@ domain and may expose typed methods for:
 - resolving screenshot image asset URLs
 - downloading screenshot image data
 
+The App Preview convenience layer is also an explicitly approved
+package-level domain and may expose typed methods for:
+
+- listing, reading, creating, and deleting app preview sets
+- listing and reading app preview resources
+- creating app preview upload reservations
+- uploading app preview bytes through the generic asset uploader
+- committing app preview uploads
+- updating app preview poster-frame timecodes
+- deleting app previews
+- reading app preview relationship order
+- reordering app previews
+
 Do not add another typed endpoint without an explicit package-level decision.
 
 Use the generic primitives for endpoints outside this convenience set.
@@ -339,3 +352,19 @@ The subsequent image CDN request must remain unauthenticated.
 
 The image delivered through `ImageAsset.templateUrl` must not be documented
 as guaranteed byte-for-byte recovery of the original uploaded source file.
+
+## 20. Prefer modern App Preview media state fields
+
+App Store Connect deprecates `assetDeliveryState` on App Preview
+resources in favor of `videoDeliveryState`.
+
+The typed App Preview layer must:
+
+1. use `videoDeliveryState`
+2. keep state values forward-compatible rather than using a closed enum
+3. not expose deprecated `previewImage` as the preferred API
+4. reuse the generic asset uploader for binary preview uploads
+5. keep App Store Connect JWT authentication off presigned upload URLs
+6. not add polling, retry, backoff, video decoding, transcoding, or media
+   validation policy
+7. keep `ASCPreviewType` separate from `ASCScreenshotDisplayType`
