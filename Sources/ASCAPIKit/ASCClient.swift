@@ -324,6 +324,70 @@ public struct ASCClient: Sendable {
         }
     }
 
+    // MARK: - Internal authorized/raw request helpers
+
+    func sendAuthorized(
+        method: String,
+        path: String,
+        queryItems: [URLQueryItem] = [],
+        body: Data? = nil
+    ) async throws -> Data {
+        let endpoint = baseURL.appending(path: path)
+
+        guard var components = URLComponents(
+            url: endpoint,
+            resolvingAgainstBaseURL: false
+        ) else {
+            throw ASCAPIError.invalidResponse
+        }
+
+        if !queryItems.isEmpty {
+            components.queryItems = queryItems
+        }
+
+        guard let url = components.url else {
+            throw ASCAPIError.invalidResponse
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        request.httpBody = body
+
+        request.setValue(
+            "Bearer \(token)",
+            forHTTPHeaderField: "Authorization"
+        )
+
+        request.setValue(
+            "application/json",
+            forHTTPHeaderField: "Accept"
+        )
+
+        if body != nil {
+            request.setValue(
+                "application/json",
+                forHTTPHeaderField: "Content-Type"
+            )
+        }
+
+        let (data, response) = try await transport.send(request)
+
+        guard (200..<300).contains(response.statusCode) else {
+            throw error(
+                for: response.statusCode,
+                data: data
+            )
+        }
+
+        return data
+    }
+
+    func sendRaw(
+        _ request: URLRequest
+    ) async throws -> (Data, HTTPURLResponse) {
+        try await transport.send(request)
+    }
+
     // MARK: - Pagination safety
 
     private func validatePaginationURL(

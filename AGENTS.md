@@ -219,6 +219,19 @@ The package currently exposes typed conveniences only for:
 - creating app info localizations
 - creating app store version localizations
 
+The screenshot convenience layer is also an explicitly approved package-level
+domain and may expose typed methods for:
+
+- listing and reading app screenshot sets
+- creating and deleting app screenshot sets
+- listing and reading app screenshots
+- creating screenshot upload reservations
+- uploading screenshot asset bytes
+- committing screenshot uploads
+- deleting screenshots
+- reading screenshot relationship order
+- reordering screenshots
+
 Do not add another typed endpoint without an explicit package-level decision.
 
 Use the generic primitives for endpoints outside this convenience set.
@@ -272,3 +285,27 @@ The package minimum platform is:
 ```
 
 A platform change requires an explicit package-level decision.
+
+## 18. Preserve asset-upload security boundaries
+
+Asset upload operations are different from authenticated App Store Connect API
+requests.
+
+For URLs supplied through `uploadOperations`:
+
+1. require `https`
+2. reject URL user information
+3. reject URL passwords
+4. use the HTTP method supplied by the operation
+5. use the exact byte range described by `offset` and `length`
+6. apply the request headers supplied by the operation
+7. never attach the App Store Connect JWT
+8. never log the presigned upload URL
+9. never log upload request headers
+10. never introduce retry, backoff, or scheduling policy inside ASCAPIKit
+
+The complete source file checksum used to commit an asset is the lowercase MD5
+checksum of the original complete file.
+
+Upload operations must collectively cover the complete file without gaps or
+overlaps before any upload request is performed.

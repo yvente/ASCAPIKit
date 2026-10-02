@@ -206,6 +206,118 @@ let localization =
     )
 ```
 
+## App screenshots
+
+ASCAPIKit provides typed primitives for App Store screenshot management.
+
+Screenshot sets can be listed, read, created, and deleted for an App Store
+version localization.
+
+```swift
+let sets = try await client.listScreenshotSets(
+    versionLocalizationID: localizationID
+)
+
+let set = try await client.createScreenshotSet(
+    versionLocalizationID: localizationID,
+    displayType: .iPhone67
+)
+```
+
+Screenshots can be listed and read:
+
+```swift
+let screenshots = try await client.listScreenshots(
+    screenshotSetID: set.id
+)
+
+let screenshot = try await client.getScreenshot(
+    id: screenshotID
+)
+```
+
+### Uploading a screenshot
+
+App Store Connect asset uploads use a reservation, binary upload, and commit
+workflow.
+
+ASCAPIKit exposes the complete screenshot upload convenience:
+
+```swift
+let screenshot = try await client.uploadScreenshot(
+    fileURL: fileURL,
+    screenshotSetID: set.id
+)
+```
+
+The convenience performs:
+
+1. screenshot reservation
+2. all upload operations returned by App Store Connect
+3. whole-file MD5 calculation
+4. upload commit
+
+The returned resource may still have the asset delivery state
+`UPLOAD_COMPLETE`.
+
+ASCAPIKit does not poll for `COMPLETE`. Hosts can read the resource again:
+
+```swift
+let screenshot = try await client.getScreenshot(
+    id: screenshotID
+)
+
+let state = screenshot.attributes
+    .assetDeliveryState?
+    .state
+```
+
+ASCAPIKit does not retry failed upload operations or apply scheduling/backoff
+policy.
+
+### Screenshot order
+
+```swift
+try await client.reorderScreenshots(
+    screenshotSetID: set.id,
+    orderedScreenshotIDs: ids
+)
+
+let currentOrder = try await client.listScreenshotOrder(
+    screenshotSetID: set.id
+)
+```
+
+### Generic asset upload primitive
+
+The low-level binary uploader is reusable by future asset resource layers:
+
+```swift
+let checksum = try await client.uploadAsset(
+    fileURL: fileURL,
+    operations: uploadOperations
+)
+```
+
+Upload-operation requests use the method, URL, byte range, and request headers
+supplied by App Store Connect.
+
+ASCAPIKit does not attach its App Store Connect JWT to presigned asset upload
+URLs.
+
+### Asset upload errors
+
+Local file validation and presigned asset-upload failures use
+`ASCAssetUploadError`:
+
+- `invalidAssetFile`
+- `invalidUploadOperation`
+- `unsafeAssetUploadURL`
+- `assetUploadFailed(Int)`
+
+Authenticated App Store Connect API failures continue to use
+`ASCAPIError`.
+
 ## Generic read primitive
 
 Typed convenience methods are not the boundary of the package.

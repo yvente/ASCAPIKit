@@ -10,3 +10,14 @@ public enum ASCAPIError: Error, Equatable, Sendable {
     case rateLimited
     case serviceError(Int, String)
 }
+
+public enum ASCAssetUploadError:
+    Error,
+    Equatable,
+    Sendable
+{
+    case invalidAssetFile
+    case invalidUploadOperation
+    case unsafeAssetUploadURL
+    case assetUploadFailed(Int)
+}
