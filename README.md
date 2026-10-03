@@ -17,7 +17,8 @@ The package provides:
 - structured HTTP/API error classification
 - transport injection for deterministic testing
 - typed convenience layers for screenshots, app previews, review
-  attachments, review details, and modern review submissions
+  attachments, review details, modern review submissions, and
+  Analytics Reports
 - public generic primitives for endpoints not covered by the typed
   conveniences
 
@@ -55,7 +56,7 @@ Add ASCAPIKit as a package dependency using semantic versioning:
 dependencies: [
     .package(
         url: "https://github.com/yvente/ASCAPIKit.git",
-        from: "0.2.0"
+        from: "0.3.0"
     )
 ]
 ```
