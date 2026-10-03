@@ -245,6 +245,127 @@ public struct ASCClient: Sendable {
         return result
     }
 
+    public func listRelationshipIDs(
+        _ path: String,
+        resourceType: String,
+        limit: Int = 200
+    ) async throws -> [String] {
+        let endpoint = baseURL.appending(
+            path: path
+        )
+
+        guard var components = URLComponents(
+            url: endpoint,
+            resolvingAgainstBaseURL: false
+        ) else {
+            throw ASCAPIError.invalidResponse
+        }
+
+        components.queryItems = [
+            URLQueryItem(
+                name: "limit",
+                value: String(limit)
+            )
+        ]
+
+        guard var nextURL = components.url else {
+            throw ASCAPIError.invalidResponse
+        }
+
+        var result: [String] = []
+        var seen = Set<URL>()
+
+        while true {
+            guard seen.insert(nextURL).inserted else {
+                throw ASCAPIError.invalidResponse
+            }
+
+            try validatePaginationURL(
+                nextURL
+            )
+
+            var request = URLRequest(
+                url: nextURL
+            )
+            request.httpMethod = "GET"
+
+            request.setValue(
+                "Bearer \(token)",
+                forHTTPHeaderField:
+                    "Authorization"
+            )
+
+            request.setValue(
+                "application/json",
+                forHTTPHeaderField:
+                    "Accept"
+            )
+
+            let (data, response) =
+                try await transport.send(
+                    request
+                )
+
+            guard
+                (200..<300).contains(
+                    response.statusCode
+                )
+            else {
+                throw error(
+                    for: response.statusCode,
+                    data: data
+                )
+            }
+
+            let page:
+                ASCPage<ASCRelationshipLinkage>
+
+            do {
+                page = try JSONDecoder()
+                    .decode(
+                        ASCPage<
+                            ASCRelationshipLinkage
+                        >.self,
+                        from: data
+                    )
+            } catch {
+                throw ASCAPIError.invalidResponse
+            }
+
+            guard
+                page.data.allSatisfy({
+                    $0.type == resourceType
+                })
+            else {
+                throw ASCAPIError.invalidResponse
+            }
+
+            result.append(
+                contentsOf:
+                    page.data.map(\.id)
+            )
+
+            guard
+                let next = page.links?.next
+            else {
+                break
+            }
+
+            guard
+                let parsed = URL(
+                    string: next,
+                    relativeTo: baseURL
+                )?.absoluteURL
+            else {
+                throw ASCAPIError.invalidResponse
+            }
+
+            nextURL = parsed
+        }
+
+        return result
+    }
+
     // MARK: - Generic write primitive
 
     public func mutate<Resource: Decodable>(
@@ -460,6 +581,13 @@ private struct ASCPage<Resource: Decodable>: Decodable {
     struct Links: Decodable {
         let next: String?
     }
+}
+
+private struct ASCRelationshipLinkage:
+    Decodable
+{
+    let type: String
+    let id: String
 }
 
 private struct ASCSingleResource<Resource: Decodable>: Decodable {

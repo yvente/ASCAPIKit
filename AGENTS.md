@@ -35,7 +35,18 @@ ASCClient.mutate(
 )
 ```
 
+and:
+
+```swift
+ASCClient.listRelationshipIDs(
+    _:resourceType:limit:
+)
+```
+
 Do not make these APIs internal or private.
+
+The relationship-ID reader is also a generic public primitive.
+It must retain the same pagination URL validation as `list`.
 
 Typed endpoint methods are convenience wrappers, not the package boundary.
 
@@ -282,6 +293,20 @@ package-level domain and may expose typed methods for:
 - explicitly marking review-submission items removed
 - explicitly submitting a review submission
 - explicitly canceling a review submission
+
+The Analytics Reports convenience layer is also an explicitly approved
+package-level domain and may expose typed methods for:
+
+- creating, listing, reading, and deleting analytics report requests
+- reading app-to-analytics-report-request relationship IDs
+- listing and reading analytics reports
+- reading report-request-to-report relationship IDs
+- listing and reading analytics report instances
+- reading report-to-instance relationship IDs
+- listing and reading analytics report segments
+- reading instance-to-segment relationship IDs
+- downloading analytics report segment bytes from Apple's temporary URL
+- validating segment size and MD5 checksum
 
 Do not add another typed endpoint without an explicit package-level decision.
 
@@ -532,3 +557,52 @@ Do not expose arbitrary raw relationship names or raw resource types.
 
 The host decides when to create, populate, resolve, remove, submit, cancel,
 or retry a review submission.
+
+## 25. Preserve Analytics Reports boundaries
+
+The Analytics Reports domain is an App Store Connect primitive layer.
+
+Typed coverage must preserve the complete currently approved resource chain:
+
+```text
+AnalyticsReportRequest
+→ AnalyticsReport
+→ AnalyticsReportInstance
+→ AnalyticsReportSegment
+```
+
+and the corresponding to-many relationship-ID reads.
+
+Known Apple string values such as access type, category, and granularity must
+remain forward-compatible `RawRepresentable` value types. Do not replace them
+with closed Swift enums that fail when Apple introduces a new value.
+
+`processingDate` remains the wire-format string in ASCAPIKit. Date parsing and
+calendar policy belong to hosts.
+
+Analytics segment download URLs are temporary external URLs and are not
+authenticated App Store Connect API URLs.
+
+For every analytics segment download:
+
+1. require `https`
+2. require a non-empty host
+3. reject URL user information
+4. reject URL passwords
+5. never attach the App Store Connect JWT
+6. never log the segment URL or its query string
+7. return the original downloaded bytes
+8. verify `sizeInBytes` when Apple supplies it
+9. verify the lowercase-equivalent MD5 `checksum` when Apple supplies it
+10. do not retry automatically
+11. do not refresh an expired segment URL automatically
+12. do not cache segment bytes or URLs
+13. do not persist report data
+14. do not decompress report bytes
+15. do not parse tab-delimited report data
+16. do not aggregate metrics
+17. do not add polling or scheduling policy
+
+`downloadAnalyticsReportSegment(id:)` may first perform one authenticated ASC
+request to obtain fresh segment metadata. The subsequent external download
+must remain unauthenticated.

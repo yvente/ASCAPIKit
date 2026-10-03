@@ -45,3 +45,22 @@ public enum ASCPreviewDownloadError:
     case downloadFailed(Int)
     case emptyResponse
 }
+
+public enum ASCAnalyticsDownloadError:
+    Error,
+    Equatable,
+    Sendable
+{
+    case segmentURLUnavailable
+    case unsafeSegmentURL
+    case downloadFailed(Int)
+    case emptyResponse
+    case sizeMismatch(
+        expected: Int64,
+        actual: Int64
+    )
+    case checksumMismatch(
+        expected: String,
+        actual: String
+    )
+}

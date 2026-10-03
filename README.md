@@ -878,6 +878,69 @@ resource for this workflow.
 Resolving and removing review-submission items are explicit one-key
 Boolean actions rather than a generic item-update API.
 
+## Analytics Reports
+
+ASCAPIKit exposes the App Store Connect Analytics Reports resource chain as
+typed API primitives:
+
+```text
+App
+→ AnalyticsReportRequest
+→ AnalyticsReport
+→ AnalyticsReportInstance
+→ AnalyticsReportSegment
+→ external report download
+```
+
+Supported operations include:
+
+- creating, listing, reading, and deleting analytics report requests
+- reading analytics report request relationship IDs
+- listing and reading generated analytics reports
+- reading analytics report relationship IDs
+- listing and reading report instances
+- reading report instance relationship IDs
+- listing and reading report segments
+- reading report segment relationship IDs
+- downloading a report segment from Apple's temporary external URL
+- validating downloaded segment size and MD5 checksum when supplied by Apple
+
+Known Analytics values are represented by forward-compatible
+`RawRepresentable` value types rather than closed enums.
+
+```swift
+let request = try await client.createAnalyticsReportRequest(
+    appID: appID,
+    accessType: .ongoing
+)
+
+let reports = try await client.listAnalyticsReports(
+    reportRequestID: request.id,
+    categories: [.appUsage]
+)
+
+let instances = try await client.listAnalyticsReportInstances(
+    reportID: reports[0].id,
+    granularities: [.daily]
+)
+
+let segments = try await client.listAnalyticsReportSegments(
+    instanceID: instances[0].id
+)
+
+let compressedData =
+    try await client.downloadAnalyticsReportSegment(
+        segments[0]
+    )
+```
+
+Analytics segment download URLs are external temporary URLs. ASCAPIKit does
+not attach the App Store Connect authorization token to those requests.
+
+The package returns the downloaded compressed report bytes unchanged.
+Decompression, tab-delimited parsing, metric aggregation, persistence,
+polling, scheduling, caching, and retry policy remain host responsibilities.
+
 ## Generic read primitive
 
 Typed convenience methods are not the boundary of the package.
@@ -927,6 +990,18 @@ Pagination cycles fail with:
 ```swift
 ASCAPIError.invalidResponse
 ```
+
+Hosts can also read to-many relationship linkage collections as resource IDs
+through the public generic relationship primitive:
+
+```swift
+ASCClient.listRelationshipIDs(
+    _:resourceType:limit:
+)
+```
+
+It follows paginated JSON:API relationship linkage collections while
+preserving the same pagination URL safety checks as `list`.
 
 ## Generic write primitive
 
