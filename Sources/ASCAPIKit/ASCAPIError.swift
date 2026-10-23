@@ -64,3 +64,11 @@ public enum ASCAnalyticsDownloadError:
         actual: String
     )
 }
+
+public enum ASCReportDownloadError:
+    Error,
+    Equatable,
+    Sendable
+{
+    case emptyResponse
+}

@@ -780,7 +780,7 @@ final class ASCClientTests: XCTestCase {
             ),
             (
                 "fields[appStoreVersions]",
-                "platform,versionString,appVersionState"
+                "platform,versionString,appVersionState,createdDate,earliestReleaseDate"
             ),
             (
                 "fields[appInfos]",

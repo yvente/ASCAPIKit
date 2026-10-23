@@ -38,7 +38,8 @@ public struct ASCClient: Sendable {
         try await list(
             "/v1/apps/\(appID)/appStoreVersions",
             resourceType: "appStoreVersions",
-            fields: "platform,versionString,appVersionState"
+            fields:
+                "platform,versionString,appVersionState,createdDate,earliestReleaseDate"
         )
     }
 
@@ -522,6 +523,68 @@ public struct ASCClient: Sendable {
         try await transport.send(request)
     }
 
+    func sendAuthorizedReport(
+        path: String,
+        queryItems: [URLQueryItem]
+    ) async throws -> Data {
+        guard
+            path == "/v1/salesReports"
+                || path == "/v1/financeReports"
+        else {
+            throw ASCAPIError.invalidResponse
+        }
+
+        let endpoint = baseURL.appending(
+            path: path
+        )
+
+        guard var components = URLComponents(
+            url: endpoint,
+            resolvingAgainstBaseURL: false
+        ) else {
+            throw ASCAPIError.invalidResponse
+        }
+
+        components.queryItems = queryItems
+
+        guard let url = components.url else {
+            throw ASCAPIError.invalidResponse
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+
+        request.setValue(
+            "Bearer \(token)",
+            forHTTPHeaderField: "Authorization"
+        )
+
+        request.setValue(
+            "application/a-gzip",
+            forHTTPHeaderField: "Accept"
+        )
+
+        let (data, response) = try await transport.send(request)
+
+        guard
+            (200..<300).contains(
+                response.statusCode
+            )
+        else {
+            throw error(
+                for: response.statusCode,
+                data: data
+            )
+        }
+
+        guard !data.isEmpty else {
+            throw ASCReportDownloadError
+                .emptyResponse
+        }
+
+        return data
+    }
+
     // MARK: - Pagination safety
 
     private func validatePaginationURL(
@@ -541,7 +604,7 @@ public struct ASCClient: Sendable {
 
     // MARK: - Error classification
 
-    private func error(
+    func error(
         for status: Int,
         data: Data
     ) -> ASCAPIError {

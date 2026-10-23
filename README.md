@@ -17,8 +17,8 @@ The package provides:
 - structured HTTP/API error classification
 - transport injection for deterministic testing
 - typed convenience layers for screenshots, app previews, review
-  attachments, review details, modern review submissions, and
-  Analytics Reports
+  attachments, review details, modern review submissions,
+  Analytics Reports, Sales and Trends reports, and Finance reports
 - public generic primitives for endpoints not covered by the typed
   conveniences
 
@@ -161,6 +161,13 @@ let appInfoLocalizations =
         appInfoID: appInfoID
     )
 ```
+
+App Store version resources include `platform`, `versionString`,
+`appVersionState`, `createdDate`, and `earliestReleaseDate`.
+
+`createdDate` and `earliestReleaseDate` remain Apple wire-format date-time
+strings. ASCAPIKit does not parse them into `Date` or apply time-zone or
+calendar conversion. Missing or null attributes decode as `nil`.
 
 ### Updates
 
@@ -942,6 +949,185 @@ The package returns the downloaded compressed report bytes unchanged.
 Decompression, tab-delimited parsing, metric aggregation, persistence,
 polling, scheduling, caching, and retry policy remain host responsibilities.
 
+## Sales and Trends reports
+
+ASCAPIKit exposes a typed download primitive for App Store Connect Sales and
+Trends reports.
+
+```swift
+let report = ASCSalesReportRequest(
+    reportType: .sales,
+    reportSubType: .summary,
+    frequency: .monthly,
+    vendorNumber: vendorNumber,
+    reportDate: "2026-09-01",
+    version: "1_0"
+)
+
+let compressedData = try await client.downloadSalesReport(
+    report
+)
+```
+
+The request is sent to:
+
+```text
+GET /v1/salesReports
+```
+
+| Query parameter | Required | Notes |
+| --- | --- | --- |
+| `filter[frequency]` | Yes | `DAILY`, `WEEKLY`, `MONTHLY`, or `YEARLY` |
+| `filter[reportSubType]` | Yes | Varies by report type |
+| `filter[reportType]` | Yes | Sales and Trends report type |
+| `filter[vendorNumber]` | Yes | App Store Connect vendor number supplied by the host |
+| `filter[reportDate]` | Conditional | `YYYY-MM-DD`; see the date note below |
+| `filter[version]` | No | Report version such as `1_0`; accepted values vary by report type |
+
+Known report types include `SALES`, `PRE_ORDER`, `NEWSSTAND`, `SUBSCRIPTION`,
+`SUBSCRIPTION_EVENT`, `SUBSCRIBER`, `SUBSCRIPTION_OFFER_CODE_REDEMPTION`,
+`INSTALLS`, `FIRST_ANNUAL`, and `WIN_BACK_ELIGIBILITY`.
+
+Known report subtypes include `SUMMARY`, `DETAILED`, `SUMMARY_INSTALL_TYPE`,
+`SUMMARY_TERRITORY`, and `SUMMARY_CHANNEL`.
+
+Known frequencies include `DAILY`, `WEEKLY`, `MONTHLY`, and `YEARLY`.
+
+`ASCSalesReportType`, `ASCSalesReportSubType`, and `ASCSalesReportFrequency`
+are forward-compatible string value types. The static members above are
+conveniences; an unknown raw value is sent to App Store Connect unchanged.
+
+ASCAPIKit does not validate report type, subtype, frequency, or version
+combinations locally. Apple defines the valid combinations:
+
+- [Download sales and trends reports](https://developer.apple.com/documentation/appstoreconnectapi/get-v1-salesreports)
+- [Download and view reports](https://developer.apple.com/help/app-store-connect/view-sales-and-trends/download-and-view-reports)
+
+### Sales report date
+
+`filter[reportDate]` uses the `YYYY-MM-DD` format.
+
+Apple's endpoint schema marks the parameter optional, while its documentation
+requires a date for every frequency except `DAILY`, which does not require a
+date.
+
+ASCAPIKit does not supply a default value. A `nil` `reportDate` omits the
+query parameter entirely; the caller decides which date to request.
+
+### Sales report response
+
+A successful response uses `Content-Type: application/a-gzip` and contains a
+gzip-compressed tab-delimited report.
+
+`downloadSalesReport` returns the original response bytes unchanged.
+
+ASCAPIKit does not decompress gzip data, parse tab-delimited rows, aggregate
+metrics, persist report data, cache responses, retry requests, poll, or
+schedule downloads.
+
+The vendor number is provided by the caller. ASCAPIKit does not store it.
+
+### Sales report errors
+
+A 2xx response with zero bytes throws:
+
+```swift
+ASCReportDownloadError.emptyResponse
+```
+
+Non-2xx responses use the same structured classification as the rest of the
+package:
+
+```text
+401 -> ASCAPIError.unauthorized
+403 -> ASCAPIError.forbidden(detail)
+429 -> ASCAPIError.rateLimited
+other non-2xx -> ASCAPIError.serviceError(status, detail)
+```
+
+Apple-provided `detail` content is passed through unchanged.
+
+### Sales report roles
+
+App Store Connect roles govern access. Downloading sales and financial
+reports requires the corresponding Sales and Reports / Finance permissions.
+Apple's financial-report documentation lists Account Holder, Admin, or
+Finance as the required roles for financial reports. Creating Analytics
+report requests typically requires Admin.
+
+Apple performs the final authorization check. ASCAPIKit does not enforce
+roles locally.
+
+## Finance reports
+
+ASCAPIKit exposes a typed download primitive for App Store Connect financial
+reports.
+
+```swift
+let compressedData = try await client.downloadFinanceReport(
+    regionCode: "US",
+    reportDate: "2026-09",
+    vendorNumber: vendorNumber
+)
+```
+
+The request is sent to:
+
+```text
+GET /v1/financeReports
+```
+
+| Query parameter | Required | Notes |
+| --- | --- | --- |
+| `filter[regionCode]` | Yes | Territory code supplied by the host |
+| `filter[reportDate]` | Yes | Apple fiscal month in `YYYY-MM` format |
+| `filter[reportType]` | Yes | Written by ASCAPIKit as `FINANCIAL` |
+| `filter[vendorNumber]` | Yes | App Store Connect vendor number supplied by the host |
+
+The `regionCode` is not validated against a built-in country or region list.
+See Apple's reference for possible values:
+
+- [Financial report regions and currencies](https://developer.apple.com/help/app-store-connect/reference/financial-report-regions-and-currencies)
+
+`filter[reportDate]` is a fiscal month, not a calendar day. ASCAPIKit passes
+the string through unchanged and does not perform calendar or fiscal-calendar
+conversion.
+
+`filter[reportType]` is fixed to `FINANCIAL` by the typed convenience.
+
+### Finance report response
+
+A successful response uses `Content-Type: application/a-gzip` and contains a
+gzip-compressed tab-delimited report.
+
+`downloadFinanceReport` returns the original response bytes unchanged.
+ASCAPIKit does not decompress, parse, aggregate, persist, cache, retry, poll,
+or schedule downloads.
+
+The vendor number is provided by the caller. ASCAPIKit does not store it.
+
+### Finance report errors
+
+A 2xx response with zero bytes throws:
+
+```swift
+ASCReportDownloadError.emptyResponse
+```
+
+Non-2xx responses use the same `ASCAPIError` classification described above
+for Sales and Trends reports.
+
+### Finance report roles
+
+Financial report access requires the corresponding Finance permissions in
+App Store Connect. Apple's help documentation lists Account Holder, Admin, or
+Finance as the required roles:
+
+- [Download financial reports](https://developer.apple.com/help/app-store-connect/getting-paid/download-financial-reports)
+
+Apple performs the final authorization check. ASCAPIKit does not enforce
+roles locally.
+
 ## Generic read primitive
 
 Typed convenience methods are not the boundary of the package.
@@ -1110,6 +1296,17 @@ public enum ASCAPIError: Error, Equatable, Sendable {
 The package does not implement `LocalizedError` and does not provide
 user-facing error descriptions.
 
+Sales and Trends and finance report downloads also use:
+
+```swift
+public enum ASCReportDownloadError: Error, Equatable, Sendable {
+    case emptyResponse
+}
+```
+
+`ASCReportDownloadError.emptyResponse` is thrown when a successful report
+response contains zero bytes. HTTP failures continue to use `ASCAPIError`.
+
 For `403` and other service errors, Apple-provided `detail` values are passed
 through without replacement text.
 
@@ -1138,6 +1335,9 @@ ASCAPIKit does not implement:
 - caching
 - token refresh
 - credential persistence
+- gzip decompression
+- tab-delimited report parsing
+- metric aggregation
 - UI
 - localized/user-facing messages
 - application-specific workflows

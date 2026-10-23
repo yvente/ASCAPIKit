@@ -308,6 +308,12 @@ package-level domain and may expose typed methods for:
 - downloading analytics report segment bytes from Apple's temporary URL
 - validating segment size and MD5 checksum
 
+The Sales and Trends / Finance report download layer is also an explicitly
+approved package-level domain and may expose typed methods for:
+
+- downloading Sales and Trends reports as raw gzip bytes
+- downloading finance reports as raw gzip bytes
+
 Do not add another typed endpoint without an explicit package-level decision.
 
 Use the generic primitives for endpoints outside this convenience set.
@@ -606,3 +612,33 @@ For every analytics segment download:
 `downloadAnalyticsReportSegment(id:)` may first perform one authenticated ASC
 request to obtain fresh segment metadata. The subsequent external download
 must remain unauthenticated.
+
+## 26. Preserve report download boundaries
+
+Sales and Trends and finance report downloads are authenticated App Store
+Connect API requests, not analytics segment downloads.
+
+Typed report downloads must:
+
+1. use only the fixed `/v1/salesReports` and `/v1/financeReports` paths on
+   the configured ASC `baseURL`
+2. send `Authorization: Bearer <JWT>`
+3. send `Accept: application/a-gzip`
+4. use `GET` without a `Content-Type` request header
+5. take `vendorNumber` from the host without storing it
+6. keep report dates as wire-format strings: `YYYY-MM-DD` for Sales and
+   Trends and Apple fiscal-month `YYYY-MM` for finance
+7. keep known report type, subtype, frequency, and version values
+   forward-compatible rather than closed enums
+8. avoid validating Apple's report type/subtype/frequency/version
+   combinations locally
+9. return the original gzip bytes without decompression
+10. avoid TSV parsing, metric aggregation, persistence, caching, retries,
+    polling, and scheduling
+11. never log the request URL, query string, vendor number, or JWT
+12. classify non-2xx responses with the existing `ASCAPIError` mapping
+13. throw `ASCReportDownloadError.emptyResponse` for an empty 2xx body
+14. keep the shared report download helper internal rather than exposing a
+    public generic authenticated download
+15. use the injected `ASCTransport` for all I/O; tests must not access the
+    real network

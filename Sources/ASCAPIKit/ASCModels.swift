@@ -79,15 +79,22 @@ public struct ASCVersion: Codable, Sendable {
         public let platform: String
         public let versionString: String
         public let appVersionState: String?
+        public let createdDate: String?
+        public let earliestReleaseDate: String?
 
         public init(
             platform: String,
             versionString: String,
-            appVersionState: String?
+            appVersionState: String?,
+            createdDate: String? = nil,
+            earliestReleaseDate: String? = nil
         ) {
             self.platform = platform
             self.versionString = versionString
             self.appVersionState = appVersionState
+            self.createdDate = createdDate
+            self.earliestReleaseDate =
+                earliestReleaseDate
         }
     }
 }

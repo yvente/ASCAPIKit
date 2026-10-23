@@ -74,4 +74,82 @@ final class ASCModelsTests: XCTestCase {
             "en-US"
         )
     }
+
+    func testVersionDecodesDateAttributesAsWireStrings() throws {
+        let data = try TestSupport.jsonData([
+            "type": "appStoreVersions",
+            "id": "version-1",
+            "attributes": [
+                "platform": "IOS",
+                "versionString": "1.2.3",
+                "appVersionState":
+                    "READY_FOR_SALE",
+                "createdDate":
+                    "2026-01-02T03:04:05Z",
+                "earliestReleaseDate":
+                    "2026-02-03T04:05:06Z"
+            ]
+        ])
+
+        let version = try JSONDecoder().decode(
+            ASCVersion.self,
+            from: data
+        )
+
+        XCTAssertEqual(
+            version.attributes.createdDate,
+            "2026-01-02T03:04:05Z"
+        )
+        XCTAssertEqual(
+            version.attributes
+                .earliestReleaseDate,
+            "2026-02-03T04:05:06Z"
+        )
+    }
+
+    func testVersionDateAttributesAreNilWhenMissing() throws {
+        let data = try TestSupport.jsonData([
+            "type": "appStoreVersions",
+            "id": "version-1",
+            "attributes": [
+                "platform": "IOS",
+                "versionString": "1.2.3"
+            ]
+        ])
+
+        let version = try JSONDecoder().decode(
+            ASCVersion.self,
+            from: data
+        )
+
+        XCTAssertNil(version.attributes.createdDate)
+        XCTAssertNil(
+            version.attributes
+                .earliestReleaseDate
+        )
+    }
+
+    func testVersionDateAttributesAreNilWhenNull() throws {
+        let data = try TestSupport.jsonData([
+            "type": "appStoreVersions",
+            "id": "version-1",
+            "attributes": [
+                "platform": "IOS",
+                "versionString": "1.2.3",
+                "createdDate": NSNull(),
+                "earliestReleaseDate": NSNull()
+            ]
+        ])
+
+        let version = try JSONDecoder().decode(
+            ASCVersion.self,
+            from: data
+        )
+
+        XCTAssertNil(version.attributes.createdDate)
+        XCTAssertNil(
+            version.attributes
+                .earliestReleaseDate
+        )
+    }
 }
