@@ -316,6 +316,21 @@ approved package-level domain and may expose typed methods for:
 - downloading Sales and Trends reports as raw gzip bytes
 - downloading finance reports as raw gzip bytes
 
+The following five generated-preview operations have an explicit package-level
+approval under the pinned Apple OpenAPI 4.5.1 specification:
+
+- GET /v1/apps/{id}
+- GET /v1/builds/{id}
+- GET /v1/appStoreVersions/{id}
+- POST /v1/appStoreVersions
+- PATCH /v1/appStoreVersions/{id}
+
+They must remain identified as partially typed, not fully verified Apple API
+coverage. JSON-backed relationships, links, and included records are not
+schema-complete. Query parameters are still raw URLQueryItem values. No new
+generated operations may be installed without independent review, offline
+transport tests, and an explicit package-level approval.
+
 Do not add another typed endpoint without an explicit package-level decision.
 
 Use the generic primitives for endpoints outside this convenience set.
