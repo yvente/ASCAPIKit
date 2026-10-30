@@ -659,3 +659,16 @@ Typed report downloads must:
     public generic authenticated download
 15. use the injected `ASCTransport` for all I/O; tests must not access the
     real network
+
+## 27. Pinned OpenAPI 4.5.1 catalog transport
+
+The pinned Apple OpenAPI 4.5.1 catalog is an explicitly approved generic
+operation registry, not a new set of manually authored typed resource domains.
+The generated `ascGenerated_*` functions return raw Data; they do not imply
+full Codable Schema support or live Apple verification. Every operation must
+come from the SHA-256-pinned official schema, have a validated /vN/ route and
+remain routed through ASCTransport with the existing JWT/error semantics.
+Custom body media types and accepted responses must be sourced from the schema.
+This package-level decision does not authorize arbitrary external URLs,
+presigned URL bearer headers, implicit retries, token refresh, or scheduling.
+The catalog generator MUST publish explicit coverage and transport blockers.
