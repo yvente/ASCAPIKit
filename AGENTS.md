@@ -62,11 +62,13 @@ The required checks are:
 3. port equals the configured `baseURL` port
 4. URL contains no user
 5. URL contains no password
-6. path begins with `/v1/`
+6. for the existing `list` and `listRelationshipIDs`, path begins with `/v1/`;
+   for the new `listAll`, the exact percent-encoded path must equal the caller's
+   validated canonical `/vN/...` path (`N` is a positive integer; no escaped
+   path characters). A `links.next` value cannot switch resources or versions.
 
-A seen-URL set must remain in the pagination loop so cycles cannot trigger
-unbounded requests.
-
+A seen-URL set must remain in every pagination loop so cycles cannot trigger
+unbounded requests. The new `listAll` also enforces a page-count ceiling.
 Do not introduce an alternate pagination path that skips these checks.
 
 ## 4. Do not add user-facing text

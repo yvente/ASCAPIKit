@@ -3,7 +3,7 @@ import Foundation
 public struct ASCClient: Sendable {
     private let token: String
     private let transport: any ASCTransport
-    private let baseURL: URL
+    let baseURL: URL
 
     public init(
         configuration: ASCCredentialConfiguration,
@@ -457,6 +457,39 @@ public struct ASCClient: Sendable {
         } catch {
             throw ASCAPIError.invalidResponse
         }
+    }
+
+    /// Follow a validated pagination URL verbatim, preserving encoded cursors.
+    /// Never attach authorization headers to an unchecked origin or path.
+    func sendAuthorizedPaginatedGET(
+        _ url: URL,
+        expectedPath: String
+    ) async throws -> Data {
+        guard let components = URLComponents(
+            url: url,
+            resolvingAgainstBaseURL: false
+        ),
+            components.scheme == "https",
+            components.host == baseURL.host,
+            components.port == baseURL.port,
+            components.user == nil,
+            components.password == nil,
+            components.fragment == nil,
+            components.percentEncodedPath == expectedPath,
+            ASCGenericPaginationPath.isAllowed(expectedPath)
+        else {
+            throw ASCAPIError.unsafePaginationURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        let (data, response) = try await transport.send(request)
+        guard (200..<300).contains(response.statusCode) else {
+            throw error(for: response.statusCode, data: data)
+        }
+        return data
     }
 
     // MARK: - Internal authorized/raw request helpers
