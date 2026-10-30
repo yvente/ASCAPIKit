@@ -1,0 +1,39 @@
+{
+  "openapi": "3.0.1",
+  "info": {"title": "Offline fixture, not an Apple API specification", "version": "4.5.1-fixture"},
+  "paths": {
+    "/v1/apps": {
+      "get": {
+        "operationId": "appsGetCollection",
+        "tags": ["Apps"],
+        "responses": {"200": {"description": "OK"}}
+      },
+      "post": {
+        "operationId": "appsCreateInstance",
+        "tags": ["Apps"],
+        "requestBody": {"content": {"application/json": {"schema": {"type": "object"}}}},
+        "responses": {"201": {"description": "Created"}}
+      },
+      "parameters": []
+    },
+    "/v2/appAvailabilities/{id}": {
+      "get": {
+        "operationId": "appAvailabilitiesGetInstance",
+        "tags": ["App Availabilities"],
+        "responses": {"200": {"description": "OK"}}
+      },
+      "patch": {
+        "operationId": "appAvailabilitiesUpdateInstance",
+        "tags": ["App Availabilities"],
+        "responses": {"200": {"description": "OK"}}
+      }
+    },
+    "/v3/appPricePoints/{id}": {
+      "delete": {
+        "operationId": "appPricePointsDeleteInstance",
+        "tags": ["Prices"], "deprecated": true,
+        "responses": {"204": {"description": "No content"}}
+      }
+    }
+  }
+}
