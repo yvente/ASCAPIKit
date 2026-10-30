@@ -557,9 +557,13 @@ public struct ASCClient: Sendable {
         body: Data?, accept: String, contentType: String?
     ) async throws -> Data {
         let endpoint = baseURL.appending(path: path)
+        // Catalog requests always carry the Bearer token, so the target must
+        // be HTTPS with a real host and no embedded URL credentials. Plain
+        // HTTP is refused before transport I/O instead of inheriting the
+        // configured baseURL scheme.
         guard var components = URLComponents(url: endpoint, resolvingAgainstBaseURL: false),
-              components.scheme == baseURL.scheme,
-              components.host == baseURL.host,
+              components.scheme?.lowercased() == "https",
+              let host = components.host, !host.isEmpty,
               components.port == baseURL.port,
               components.user == nil, components.password == nil,
               components.fragment == nil else {

@@ -1,10 +1,14 @@
 # ASCAPIKit
 
-ASCAPIKit is a small Swift package containing reusable primitives for
-communicating with the App Store Connect API.
+ASCAPIKit is a Swift package for the App Store Connect API with no
+third-party runtime dependencies.
 
-It is intentionally independent from any particular host application or
-product workflow.
+It provides both commonly used typed convenience methods and a complete,
+generated operation catalog based on Apple's official pinned OpenAPI 4.5.1
+specification, on top of shared generic request primitives.
+
+The package is intentionally independent from any particular host
+application or product workflow.
 
 The package provides:
 
@@ -12,9 +16,13 @@ The package provides:
 - JSON:API resource decoding
 - paginated collection reads with caller filters
 - JSON:API PATCH and POST mutations
+- a public generic transport layer with structured error classification
+- a generated OpenAPI operation catalog covering all 1,303 operations of
+  pinned Apple OpenAPI 4.5.1, callable as raw authenticated requests
+- type-safe query overloads for three generated GET operations
+  (79 typed query parameters)
 - App Store Connect asset upload (reservation, binary upload, commit)
 - image asset download
-- structured HTTP/API error classification
 - transport injection for deterministic testing
 - typed convenience layers for screenshots, app previews, review
   attachments, review details, modern review submissions,
@@ -32,6 +40,15 @@ The package provides:
 
 ## Installation
 
+### Release tags and current features
+
+The latest tagged release (`0.4.0`) predates the OpenAPI operation catalog
+and the typed query overloads. Those features currently live on `main`.
+
+Until a release tag containing the catalog is published, use the branch
+dependency shown below. A branch dependency tracks moving code and is not
+an immutable version pin.
+
 ### Xcode
 
 In Xcode, choose:
@@ -46,20 +63,26 @@ and enter the repository URL:
 https://github.com/yvente/ASCAPIKit
 ```
 
-Select the latest tagged version.
+Select a tagged release for stable, versioned functionality, or the `main`
+branch to use the OpenAPI catalog features described in this README.
 
 ### Package.swift
 
-Add ASCAPIKit as a package dependency using semantic versioning:
+Add ASCAPIKit as a package dependency. To use the current feature set
+including the OpenAPI catalog:
 
 ```swift
 dependencies: [
     .package(
         url: "https://github.com/yvente/ASCAPIKit.git",
-        from: "0.3.0"
+        branch: "main"
     )
 ]
 ```
+
+Note that a `branch:` dependency resolves to moving code on `main` and is
+not an immutable version. Tagged releases such as `0.3.0` and `0.4.0` do
+not contain the OpenAPI catalog.
 
 and add the product to your target:
 
@@ -133,6 +156,231 @@ The JWT is created once during `ASCClient` initialization.
 ASCAPIKit does not refresh or rotate tokens. Tokens created by this package
 expire 10 minutes after their `iat` value. A host that needs to continue
 making requests after expiration must construct a new `ASCClient`.
+
+## OpenAPI operation catalog
+
+ASCAPIKit includes a generated catalog built from Apple's official,
+SHA-256-pinned OpenAPI 4.5.1 specification. Every operation in the
+specification is exposed twice:
+
+1. a named generated entry point on `ASCClient`
+   (`ascGenerated_...`) that returns raw `Data`
+2. the public generic dispatcher
+   `ASCClient.ascOpenAPI(_:pathParameters:queryItems:body:accept:)`
+
+Both route through the same injected `ASCTransport`, the same JWT, and the
+same structured `ASCAPIError` classification as the typed convenience
+layers.
+
+### Catalog coverage
+
+The numbers below are taken from the repository's own coverage report,
+`Tools/ASCOpenAPI/catalog-coverage-4.5.1.json`:
+
+| Metric | Count |
+| --- | ---: |
+| Apple OpenAPI 4.5.1 official operations | 1303 |
+| Generated named entry points | 1303 |
+| Callable through the generic transport dispatcher | 1303 |
+| Explicit transport blockers | 0 |
+| Fully schema-typed by this generation | 0 |
+| Live-Apple-verified by this generation | 0 |
+
+What 1,303/1,303 means: every official operation has a named, publicly
+callable Swift entry point and can be invoked through the generic raw
+request dispatcher.
+
+What 1,303/1,303 does **not** mean:
+
+- it does not mean every API has a complete Codable Swift model
+- it does not mean every request parameter is automatically schema-validated
+- it does not mean the operations have been verified against the real
+  Apple App Store Connect service
+
+The catalog is a raw-transport operation registry, not a fully typed SDK.
+
+### Discovering operations
+
+Operations are `ASCOpenAPIOperation` values exposed through
+`ASCOpenAPICatalog`. The complete set is available as
+`ASCOpenAPICatalog.all`:
+
+```swift
+let operation = ASCOpenAPICatalog.all.first {
+    $0.method == "GET" && $0.pathTemplate == "/v1/apps/{id}"
+}
+```
+
+Each operation exposes `id`, `method`, `pathTemplate`,
+`pathParameterNames`, `queryParameterNames`,
+`requiredQueryParameterNames`, `requestContentTypes`,
+`requestBodyRequired`, `responseContentTypes`, `deprecated`, and
+`transportBlocker`. Hosts can use these fields to build their own
+request UI, validation, or coverage reporting.
+
+See [docs/OPENAPI_CATALOG.md](docs/OPENAPI_CATALOG.md) for the complete
+catalog usage documentation.
+
+### Reading an app through the catalog
+
+```swift
+// Discovery by method and path template.
+guard let operation = ASCOpenAPICatalog.all.first(where: {
+    $0.method == "GET" && $0.pathTemplate == "/v1/apps/{id}"
+}) else {
+    return
+}
+
+// Path parameters are validated before a request is built.
+let data = try await client.ascOpenAPI(
+    operation,
+    pathParameters: ["id": appID],
+    queryItems: [
+        URLQueryItem(name: "fields[apps]", value: "name,bundleId"),
+        URLQueryItem(name: "include", value: "appStoreVersions")
+    ]
+)
+
+// The response is raw Data. Decoding is the caller's responsibility.
+struct AppResponse: Decodable {
+    struct Data: Decodable {
+        let id: String
+    }
+    let data: Data
+}
+
+let app = try JSONDecoder().decode(AppResponse.self, from: data)
+```
+
+The same call through the generated named entry point:
+
+```swift
+let data = try await client.ascGenerated_apps_getinstance_88c8c93973(
+    pathParameters: ["id": appID]
+)
+```
+
+### Writing through the catalog
+
+The following examples are demonstrations only. They are not executed
+during testing and are never sent to App Store Connect by this package.
+
+POST with a JSON:API request body. Catalog request bodies must be JSON
+objects:
+
+```swift
+// Demonstration only: this shape is not sent during testing.
+let createOperation = ASCOpenAPICatalog.all.first {
+    $0.method == "POST" && $0.pathTemplate == "/v1/appInfoLocalizations"
+}
+
+let body: ASCJSONValue = .object([
+    "data": .object([
+        "type": .string("appInfoLocalizations"),
+        "attributes": .object([
+            "locale": .string("en-US"),
+            "name": .string("Name")
+        ]),
+        "relationships": .object([
+            "appInfo": .object([
+                "data": .object([
+                    "type": .string("appInfos"),
+                    "id": .string(appInfoID)
+                ])
+            ])
+        ])
+    ])
+])
+
+let data = try await client.ascOpenAPI(
+    createOperation,
+    body: .json(body)
+)
+```
+
+PATCH uses the same JSON:API `data` shape with an `id` inside the resource
+object and the resource ID in the path.
+
+DELETE returns the response body as `Data`. App Store Connect DELETE
+endpoints commonly return HTTP 204 with an empty body, so a successful
+`ascOpenAPI` call may legitimately return empty `Data`:
+
+```swift
+// Demonstration only: this shape is not sent during testing.
+let deleteOperation = ASCOpenAPICatalog.all.first {
+    $0.method == "DELETE" && $0.pathTemplate == "/v1/appInfoLocalizations/{id}"
+}
+
+let data = try await client.ascOpenAPI(
+    deleteOperation,
+    pathParameters: ["id": localizationID]
+)
+
+if data.isEmpty {
+    // Typical for a 204 response.
+}
+```
+
+### Binary request bodies
+
+`ASCOpenAPIBody.bytes(Data, contentType:)` hands the exact bytes to the
+transport. The base Content-Type must be one of the operation's
+`requestContentTypes`; the dispatcher rejects unsupported types before
+sending. In the pinned 4.5.1 catalog, request bodies are limited to
+`application/json`, so `.bytes` is only valid with that type. If a future
+pinned specification adds `multipart/form-data` operations, multipart
+framing remains entirely the caller's responsibility — the catalog
+transmits the bytes as given.
+
+### Catalog limits
+
+- The catalog does not automatically follow `links.next` pagination.
+- Returned `Data` is raw; decoding is the caller's responsibility.
+- Query name validation (`invalidQueryParameter`,
+  `missingRequiredQueryParameter`) checks names against the pinned
+  specification. It is not full schema validation of values.
+- Complex JSON:API documents, including relationships, remain the
+  caller's responsibility to construct.
+- Some operations use special media types (`text/csv`,
+  `application/a-gzip` responses). Pass an explicit `accept:` value when
+  the default `application/json` is not what the operation should receive.
+- Presigned upload URLs are a different security boundary and must never
+  be passed through the catalog. Asset uploads use the dedicated
+  upload workflow described below.
+
+## Type-safe query overloads
+
+For the five generated operations, ASCAPIKit ships generated response
+models, and for three GET operations it ships generated query structs
+with 79 typed query parameters:
+
+- `GET /v1/apps/{id}` — `ascTypedGetApp(id:query:)`
+- `GET /v1/builds/{id}` — `ascTypedGetBuild(id:query:)`
+- `GET /v1/appStoreVersions/{id}` — `ascTypedGetAppStoreVersion(id:query:)`
+- `POST /v1/appStoreVersions` — `ascTypedCreateAppStoreVersion(body:)`
+- `PATCH /v1/appStoreVersions/{id}` — `ascTypedUpdateAppStoreVersion(id:body:)`
+
+Query structs encode Apple's declared serialization. Array fields are
+comma-joined exactly as the pinned specification requires for these
+operations:
+
+```swift
+let query = ASCTypedGetAppQuery(
+    fields_apps_: ["name", "bundleId"],
+    include: ["appStoreVersions"]
+)
+
+let response = try await client.ascTypedGetApp(
+    id: appID,
+    query: query
+)
+```
+
+These generated APIs are identified as partially typed. JSON-backed
+relationships, links, and included records are not schema-complete, and
+they are not verified against the live Apple service. Raw
+`queryItems:` overloads remain available alongside the typed `query:`
+overloads.
 
 ## Typed convenience API
 
@@ -217,6 +465,28 @@ let localization =
         ]
     )
 ```
+
+## Legacy media workflows
+
+Apple's OpenAPI 4.5.1 specification introduces the App Asset Library as a
+newer model for managing app media assets. In the pinned 4.5.1 catalog
+the legacy screenshot-set and preview-set operations (for example
+`appScreenshotSets` and `appPreviews`) are not flagged as deprecated;
+Apple's current App Store Connect documentation, however, directs new
+media workflows toward the App Asset Library. Consult Apple's
+documentation when deciding which model to adopt.
+
+The typed screenshot and preview convenience layers in this package still
+use the corresponding legacy App Store Connect endpoints documented below.
+They continue to work against the endpoints they were built for.
+
+The App Asset Library resources are reachable through the OpenAPI
+operation catalog (for example the `appAssetLibraries`,
+`appAssetLibraryImages`, and `appAssetLibraryVideos` operations in
+`ASCOpenAPICatalog`). ASCAPIKit does not yet provide an equivalent
+high-level upload convenience for the App Asset Library; hosts that adopt
+it use the catalog's raw request entry points and own the request
+document construction.
 
 ## App screenshots
 
@@ -1190,6 +1460,11 @@ ASCClient.listRelationshipIDs(
 It follows paginated JSON:API relationship linkage collections while
 preserving the same pagination URL safety checks as `list`.
 
+For canonical versioned collection paths, the generic
+`listAll(_:queryItems:maxPages:as:)` primitive fetches a complete
+collection over `links.next` with a page-count ceiling and exact
+percent-encoded path validation.
+
 ## Generic write primitive
 
 Hosts can perform JSON:API mutations without adding a typed convenience
@@ -1231,6 +1506,23 @@ let resource: CustomResource = try await client.mutate(
 
 The generated request body follows the JSON:API resource-document shape.
 
+For paths and payloads the convenience methods do not cover, the raw
+generic request primitives are also public:
+
+```swift
+let data = try await client.requestRaw(
+    method: .get,
+    path: "/v1/apps",
+    queryItems: [
+        URLQueryItem(name: "limit", value: "10")
+    ]
+)
+```
+
+`requestRaw` returns raw `Data` (possibly empty for a 204 response),
+`requestDecoded` decodes a complete response document, and
+`requestResource` decodes an ordinary single-resource JSON:API envelope.
+
 ## Transport injection
 
 All HTTP I/O passes through `ASCTransport`.
@@ -1242,6 +1534,15 @@ The default implementation is:
 ```swift
 URLSessionASCTransport
 ```
+
+Before the default transport performs any network I/O, it validates
+requests that carry an Authorization header: the URL must use HTTPS, have a
+non-empty host, and contain no URL user or password information. Requests
+that fail this check throw `ASCAPIError.invalidResponse` instead of sending
+a Bearer token over an unsafe URL. The default transport also refuses to
+follow a redirect of an authenticated request to a different origin, so the
+Authorization header is never forwarded to an unexpected target;
+unauthenticated requests keep the standard URLSession redirect behavior.
 
 A host or test can inject another transport:
 
@@ -1274,7 +1575,11 @@ let client = try ASCClient(
 ```
 
 This allows tests to exercise request construction, pagination, JSON decoding,
-and error handling without real network access.
+and error handling without real network access. When a host injects its own
+transport, URL policy for the requests it sends is the host's responsibility.
+
+Catalog API requests additionally require HTTPS at the client layer before
+a request is built, regardless of the injected transport.
 
 ## Errors
 
@@ -1312,6 +1617,26 @@ through without replacement text.
 
 If no detail is returned, the associated detail string is empty.
 
+Catalog input validation throws `ASCOpenAPICatalogError` before any request
+is sent:
+
+```swift
+public enum ASCOpenAPICatalogError: Error, Sendable, Equatable {
+    case unsupportedOperation(String)
+    case invalidPathParameter(String)
+    case unexpectedPathParameter(String)
+    case invalidQueryParameter(String)
+    case missingRequiredQueryParameter(String)
+    case missingRequiredBody
+    case unexpectedBody
+    case unsupportedContentType(String)
+    case unsupportedAccept(String)
+}
+```
+
+HTTP failures from catalog requests continue to use the `ASCAPIError`
+classification above.
+
 ## Networking boundary
 
 `URLSessionASCTransport` is the only production implementation in the package
@@ -1327,6 +1652,14 @@ logs, errors, or diagnostic output.
 Tests should inspect token structure only when necessary and must not print
 the token.
 
+The default transport refuses to send an Authorization header over plaintext
+HTTP, to a URL without a host, or to a URL containing user information, and
+throws `ASCAPIError.invalidResponse` before any network I/O. Authenticated
+requests that would redirect to a different origin are not followed.
+Presigned upload URLs, image CDN downloads, media downloads, and analytics
+segment downloads remain unauthenticated by design and keep their own
+existing HTTPS boundaries.
+
 ## Deliberately not included
 
 ASCAPIKit does not implement:
@@ -1335,6 +1668,10 @@ ASCAPIKit does not implement:
 - caching
 - token refresh
 - credential persistence
+- automatic JWT refresh or rotation during a client's lifetime
+- automatic pagination following in the OpenAPI catalog dispatcher
+- complete Codable models for every catalog operation
+- full schema validation of catalog request values
 - gzip decompression
 - tab-delimited report parsing
 - metric aggregation
