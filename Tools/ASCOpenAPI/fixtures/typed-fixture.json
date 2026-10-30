@@ -1,0 +1,25 @@
+{
+  "openapi": "3.0.1",
+  "info": {"title":"Synthetic fixture only", "version": "4.5.1-fixture"},
+  "components": {
+    "schemas": {
+      "App": {"type":"object", "required":["id","type"], "properties": {"id":{"type":"string"}, "type":{"type":"string", "enum":["apps"]}, "attributes":{"$ref":"#/components/schemas/AppAttributes"}, "relationships":{"type":"object", "properties":{"builds":{"type":"object"}}}}},
+      "AppAttributes":{"type":"object","properties":{"name":{"type":"string"},"bundleId":{"type":"string"},"isOrEverWasMadeForKids":{"type":"boolean"},"sku":{"type":"string"}}},
+      "Build":{"type":"object","required":["id","type"],"properties":{"id":{"type":"string"},"type":{"type":"string"},"attributes":{"$ref":"#/components/schemas/BuildAttributes"}}},
+      "BuildAttributes":{"type":"object","properties":{"version":{"type":"string"},"expired":{"type":"boolean"},"iconAssetToken":{"type":"object","properties":{"width":{"type":"integer"}}}}},
+      "AppStoreVersion":{"type":"object","required":["id","type"],"properties":{"id":{"type":"string"},"type":{"type":"string"},"attributes":{"$ref":"#/components/schemas/AppStoreVersionAttributes"}}},
+      "AppStoreVersionAttributes":{"type":"object","properties":{"versionString":{"type":"string"},"createdDate":{"type":"string","format":"date-time"},"appStoreState":{"type":"string"},"usesIdfa":{"type":"boolean"}}},
+      "AppResponse":{"type":"object","required":["data"],"properties":{"data":{"$ref":"#/components/schemas/App"},"links":{"type":"object"},"included":{"type":"array","items":{"oneOf":[{"$ref":"#/components/schemas/Build"},{"$ref":"#/components/schemas/AppStoreVersion"}]}}}},
+      "BuildResponse":{"type":"object","required":["data"],"properties":{"data":{"$ref":"#/components/schemas/Build"}}},
+      "AppStoreVersionResponse":{"type":"object","required":["data"],"properties":{"data":{"$ref":"#/components/schemas/AppStoreVersion"}}},
+      "AppStoreVersionCreateRequest":{"type":"object","required":["data"],"properties":{"data":{"type":"object","required":["type","attributes","relationships"],"properties":{"type":{"type":"string"},"attributes":{"type":"object","required":["platform","versionString"],"properties":{"platform":{"type":"string"},"versionString":{"type":"string"},"copyright":{"type":"string"}}},"relationships":{"type":"object","properties":{"app":{"type":"object"}}}}}}},
+      "AppStoreVersionUpdateRequest":{"type":"object","required":["data"],"properties":{"data":{"type":"object","required":["id","type"],"properties":{"id":{"type":"string"},"type":{"type":"string"},"attributes":{"type":"object","properties":{"copyright":{"type":"string"},"releaseType":{"type":"string"}}}}}}}
+    }
+  },
+  "paths": {
+    "/v1/apps/{id}": {"get":{"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/AppResponse"}}}}}}},
+    "/v1/builds/{id}": {"get":{"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/BuildResponse"}}}}}}},
+    "/v1/appStoreVersions/{id}": {"get":{"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/AppStoreVersionResponse"}}}}}}, "patch":{"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/AppStoreVersionUpdateRequest"}}}},"responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/AppStoreVersionResponse"}}}}}}},
+    "/v1/appStoreVersions": {"post":{"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/AppStoreVersionCreateRequest"}}}},"responses":{"201":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/AppStoreVersionResponse"}}}}}}}
+  }
+}
