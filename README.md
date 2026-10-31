@@ -40,14 +40,15 @@ The package provides:
 
 ## Installation
 
-### Release tags and current features
+### Release notes
 
-The latest tagged release (`0.4.0`) predates the OpenAPI operation catalog
-and the typed query overloads. Those features currently live on `main`.
+Version `0.5.0` is the tagged release containing the complete OpenAPI 4.5.1
+operation catalog, the generated named entry points, and the typed query
+overloads. Earlier tagged releases (`0.3.0`, `0.4.0`) do not include the
+catalog.
 
-Until a release tag containing the catalog is published, use the branch
-dependency shown below. A branch dependency tracks moving code and is not
-an immutable version pin.
+For production use, prefer a tagged release. The `main` branch is the
+ongoing development branch and may change between tags.
 
 ### Xcode
 
@@ -63,26 +64,20 @@ and enter the repository URL:
 https://github.com/yvente/ASCAPIKit
 ```
 
-Select a tagged release for stable, versioned functionality, or the `main`
-branch to use the OpenAPI catalog features described in this README.
+Select version `0.5.0` or later.
 
 ### Package.swift
 
-Add ASCAPIKit as a package dependency. To use the current feature set
-including the OpenAPI catalog:
+Add ASCAPIKit as a package dependency using semantic versioning:
 
 ```swift
 dependencies: [
     .package(
         url: "https://github.com/yvente/ASCAPIKit.git",
-        branch: "main"
+        from: "0.5.0"
     )
 ]
 ```
-
-Note that a `branch:` dependency resolves to moving code on `main` and is
-not an immutable version. Tagged releases such as `0.3.0` and `0.4.0` do
-not contain the OpenAPI catalog.
 
 and add the product to your target:
 
